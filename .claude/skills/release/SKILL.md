@@ -38,21 +38,23 @@ app ships separately, through TestFlight with an `ios-v*` tag (see README).
    - writes `VERSION`, renames `[Unreleased]` to `[vX.Y.Z] — date` and opens a fresh empty `[Unreleased]`;
    - commits `Release vX.Y.Z`, adds an annotated tag `vX.Y.Z`, and pushes `main` and the tag.
 
-   **Cloud sessions can't push `main` or tags** (only work branches). There, use
-   the cloud route instead of `--push`. Don't try to work around the refusal.
-   - Run it without `--push`. Delete the local tag (`git tag -d vX.Y.Z`; it
-     was never pushed), and move the `Release vX.Y.Z` commit onto a branch
-     `claude/release-vX.Y.Z`.
-   - Push that branch and open a PR into `main` titled `Release vX.Y.Z`.
-     The user merges it.
-   - Then start **Build Windows proxy** on `main` with the input
-     `release_version: X.Y.Z` (GitHub Actions "run workflow"; the GitHub tool's
-     `run_workflow` with `ref: main` and `inputs: {release_version: "X.Y.Z"}`).
-     The workflow checks that VERSION on `main` says X.Y.Z and that the tag
-     doesn't exist yet. It then builds and smoke-tests the exe, and creates
-     the tag and the Release itself.
+   **From a cloud session** (which can't push `main` or tags), release in one step
+   on GitHub instead of `--push`:
+   - Make sure local `main` is synced, and show the user the dry run (step 4).
+   - Start **Build Windows proxy** on `main` with the input
+     `release: <level or X.Y.Z>`. With the GitHub tool, that's `run_workflow`,
+     `workflow_id: build-proxy.yml`, `ref: main`, `inputs: {release: "patch"}`.
+   - Its `prepare` job runs `scripts/release.py <level>` on GitHub: the same
+     checks, bump, CHANGELOG roll, commit and tag. It pushes `main` and the tag
+     with the workflow's token, and the `build` job then builds and publishes
+     that tag.
+   - If `prepare` fails because `main` is protected against the workflow's push,
+     fall back. Move the release commit onto `claude/release-vX.Y.Z` and open a
+     `Release vX.Y.Z` PR. Once it's merged, run the workflow with
+     `release_version: X.Y.Z` (publishes what `main` already says). Don't work
+     around the protection.
 6. **Watch the build.**
-   - The tag (or the manual `release_version` run) starts *Build Windows proxy*: it builds the exe, smoke-tests it (it must start and serve the page), and publishes the GitHub Release `PP Remote vX.Y.Z` with `pp-remote-proxy.exe` attached and that version's CHANGELOG section as the notes.
+   - The tag push, or the one-step `release` run, starts *Build Windows proxy*: it builds the exe, smoke-tests it (it must start and serve the page), and publishes the GitHub Release `PP Remote vX.Y.Z` with `pp-remote-proxy.exe` attached and that version's CHANGELOG section as the notes.
    - Wait for the run to finish.
    - Confirm the Release exists and the asset is attached, then give the user the Release link.
    - If the build fails, fix it on `main` and cut the next patch version. Never move or re-push an existing tag.
