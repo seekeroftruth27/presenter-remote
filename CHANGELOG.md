@@ -5,6 +5,13 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- **Adding from a library was still refused** ("missing field
+  `arrangement_name`"): the new item was built with fewer fields than
+  ProPresenter requires. It's now shaped like a song already in the playlist,
+  every item keeps `arrangement_name` (empty for none), and choosing **No
+  arrangement** sets it empty instead of removing it.
+
 ## [v1.0.1] — 2026-10-12
 
 ### Fixed

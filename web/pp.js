@@ -65,16 +65,19 @@
     }
 
     // A playlist as ProPresenter's PUT will take it. Every field it read out goes
-    // back as it was, with two exceptions, both learned from its own 400 errors:
+    // back as it was; the exceptions are what its own 400 errors have asked for:
     //   - an empty item id ("" -- headers have one) must be null, not "";
-    //   - target_uuid is required on every item ("missing field `target_uuid`"),
-    //     so an item that came without one gets "".
-    // Dropping empty fields altogether (an earlier attempt) is what lost
-    // target_uuid, so nothing else is removed.
+    //   - target_uuid is required on every item ("missing field `target_uuid`");
+    //   - presentation_info needs arrangement_name ("missing field
+    //     `arrangement_name`"), "" meaning no arrangement.
+    // Nothing is ever dropped: leaving out empty fields is what lost them.
     function putBody(items) {
       return JSON.parse(JSON.stringify(items)).map(it => {
         if (it.id && typeof it.id === "object" && !it.id.uuid) it.id.uuid = null;
         if (it.target_uuid === undefined || it.target_uuid === null) it.target_uuid = "";
+        const info = it.presentation_info;
+        if (info && typeof info === "object" && (info.arrangement_name === undefined || info.arrangement_name === null))
+          info.arrangement_name = "";
         return it;
       });
     }
@@ -287,7 +290,7 @@
           if (items[index].type !== "presentation") throw new Error("Only songs/presentations have arrangements");
           const info = Object.assign({}, items[index].presentation_info || {});
           if (!info.presentation_uuid) info.presentation_uuid = itemPresentation(items[index]);
-          if (arrangement) info.arrangement_name = arrangement; else delete info.arrangement_name;
+          info.arrangement_name = arrangement;   // "" = no arrangement (the field must stay)
           items[index].presentation_info = info;
           const n = items.length;
           pres = itemPresentation(items[index]);
@@ -308,8 +311,19 @@
         name = (name || "").trim().slice(0, 200);
         return this.editPlaylist(id, items => {
           const n = items.length;
-          items.push({ id: { uuid, name, index: n }, type: "presentation", is_hidden: false,
-                       is_pco: false, presentation_info: { presentation_uuid: uuid }, target_uuid: uuid });
+          // Shape the new item like a song already in the playlist, so it carries
+          // every field ProPresenter puts on one (its PUT rejects missing ones).
+          const like = items.find(it => it.type === "presentation" && it.presentation_info);
+          const item = like ? JSON.parse(JSON.stringify(like)) : {};
+          Object.assign(item, { id: { uuid, name, index: n }, type: "presentation",
+                                is_hidden: false, is_pco: false, target_uuid: uuid });
+          // Keep presentation_info's fields but not the other song's values (an
+          // arrangement id there would point at that song's arrangement).
+          const info = {};
+          for (const [k, v] of Object.entries(item.presentation_info || {}))
+            info[k] = typeof v === "string" ? "" : null;
+          item.presentation_info = Object.assign(info, { presentation_uuid: uuid, arrangement_name: "" });
+          items.push(item);
           return after => after.length === n + 1 && itemPresentation(after[n]) === uuid;
         });
       },
