@@ -15,6 +15,9 @@ A phone remote for **ProPresenter 7** (7.9 or later), using its network API.
   - ProPresenter's macros as buttons in their own colours. The first tap arms one; a second tap within 3 s runs it.
   - **Clear all** (hold).
 
+> **Free to use.** If PP Remote helps your church, donations are welcome by
+> **Zelle** to **giving@emanuel-church.com**. Thank you!
+
 It comes two ways. Both are the same page (`web/`), and all ProPresenter calls are in `web/pp.js`.
 
 | | Needs | Good for |

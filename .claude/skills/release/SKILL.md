@@ -50,4 +50,4 @@ app ships separately, through TestFlight with an `ios-v*` tag (see README).
 - Releases come only from `main`, and only through `scripts/release.py`, so the version, changelog, commit and tag always match.
 - Never delete or force-move a pushed tag. A bad release is fixed by a new one.
 - The exe is never committed. It exists only as a Release asset and as a workflow artifact.
-- Nothing personal ships: no church or person names, phone numbers or real IP addresses in the code, docs or CHANGELOG. Examples use `192.168.1.50:1025`.
+- Nothing personal ships: no person names, phone numbers or real IP addresses in the code, docs or CHANGELOG. Examples use `192.168.1.50:1025`. The one deliberate exception is the donations note at the top of the README (Zelle to giving@emanuel-church.com); keep it as it is.
