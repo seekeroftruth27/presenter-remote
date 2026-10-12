@@ -57,6 +57,7 @@ app ships separately, through TestFlight with an `ios-v*` tag (see README).
    - The tag push, or the one-step `release` run, starts *Build Windows proxy*: it builds the exe, smoke-tests it (it must start and serve the page), and publishes the GitHub Release `PP Remote vX.Y.Z` with `pp-remote-proxy.exe` attached and that version's CHANGELOG section as the notes.
    - Wait for the run to finish.
    - Confirm the Release exists and the asset is attached, then give the user the Release link.
+   - If the tag was pushed but only the publishing failed, run **Build Windows proxy** on the tag itself (`run_workflow` with `ref: vX.Y.Z` and no inputs). It builds that tag and publishes its Release.
    - If the build fails, fix it on `main` and cut the next patch version. Never move or re-push an existing tag.
 
 ## Rules
