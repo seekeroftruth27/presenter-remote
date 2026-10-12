@@ -115,6 +115,9 @@ jobs:
           CUT: ${{ needs.prepare.outputs.tag }}
           WANT: ${{ inputs.release_version }}
         run: |
+          # The commit being released: GitHub's target_commitish takes a branch
+          # or a commit, not a tag name. HEAD is the checked-out tag (or main).
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           if [[ -n "$CUT" ]]; then
             echo "tag=$CUT" >> "$GITHUB_OUTPUT"
           elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
@@ -153,7 +156,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.rel.outputs.tag }}
-          target_commitish: ${{ needs.prepare.outputs.tag || github.sha }}
+          target_commitish: ${{ steps.rel.outputs.sha }}
           name: PP Remote ${{ steps.rel.outputs.tag }}
           body_path: release-notes.md
           files: dist/pp-remote-proxy.exe
