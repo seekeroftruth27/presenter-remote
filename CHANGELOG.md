@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.0.0] — 2026-10-12
+
 ### Added
 - **Phone remote for ProPresenter 7** (7.9+), as an iPhone app (`mobile/`) or in
   any phone browser through a small proxy (`proxy/`, built as
