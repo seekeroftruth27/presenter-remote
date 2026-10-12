@@ -4,10 +4,14 @@ name: Build Windows proxy
 # with the page bundled in, as one Windows file that needs no Python. Download it
 # from the run's Artifacts. It also publishes the GitHub Release vX.Y.Z (exe
 # attached, the version's CHANGELOG section as the notes) when:
-#   - a vX.Y.Z tag is pushed (scripts/release.py --push from your own machine),
-#   - a release is published on GitHub's website, or
-#   - it's run manually on main with release_version set (the cloud route: it
-#     creates the tag and the release itself; VERSION must already say it).
+#   - it's run manually on main with `release` = patch / minor / major / X.Y.Z:
+#     the one-step release. The prepare job runs scripts/release.py (checks,
+#     VERSION bump, CHANGELOG roll, commit, tag) and pushes main and the tag;
+#     the build job then builds that tag and publishes it;
+#   - a vX.Y.Z tag is pushed (scripts/release.py --push from your own machine);
+#   - a release is published on GitHub's website; or
+#   - it's run manually with `release_version` = the version main already says
+#     (for when main is protected and the bump came in through a PR).
 on:
   push:
     branches: ["**"]
@@ -20,6 +24,10 @@ on:
     types: [published]   # a release published on GitHub's website (it creates the tag)
   workflow_dispatch:
     inputs:
+      release:
+        description: "One-step release: patch, minor, major or X.Y.Z (bumps VERSION, rolls CHANGELOG, tags, publishes). Empty = no release."
+        required: false
+        default: ""
       release_version:
         description: "Publish this version as a release (must equal VERSION on main, e.g. 1.0.0). Empty = test build only."
         required: false
@@ -29,10 +37,55 @@ permissions:
   contents: write   # to attach the exe to a Release on a tag
 
 jobs:
+  # One-step release only: bump, commit and tag on main, push both. A tag pushed
+  # with the workflow's own token doesn't start another run, so the build job
+  # below builds and publishes it.
+  prepare:
+    if: github.event_name == 'workflow_dispatch' && inputs.release != ''
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.cut.outputs.tag }}
+    steps:
+      - name: Releases come from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run the release from main."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Bump, roll CHANGELOG, commit and tag (scripts/release.py)
+        id: cut
+        env:
+          LEVEL: ${{ inputs.release }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python scripts/release.py "$LEVEL"
+          tag="v$(tr -d '\r\n ' < VERSION)"
+          git push origin main "$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: prepare
+    # Runs on every trigger; after a one-step release it waits for prepare.
+    if: ${{ !cancelled() && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped') }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag || github.ref }}
 
       - uses: actions/setup-python@v5
         with:
@@ -52,16 +105,19 @@ jobs:
           Stop-Process -Id $p.Id
           if ($r.Content -notmatch "PP Remote") { throw "page not served" }
 
-      # Which release this run publishes, if any: a pushed vX.Y.Z tag, a release
-      # published on GitHub's website, or a manual run with release_version set
-      # (the cloud route: the workflow creates the tag and the Release itself).
+      # Which release this run publishes, if any: the tag the prepare job just
+      # cut, a pushed vX.Y.Z tag, a release published on GitHub's website, or a
+      # manual run with release_version set.
       - name: Decide the release
         id: rel
         shell: bash
         env:
+          CUT: ${{ needs.prepare.outputs.tag }}
           WANT: ${{ inputs.release_version }}
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [[ -n "$CUT" ]]; then
+            echo "tag=$CUT" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
           elif [[ -n "$WANT" ]]; then
             have=$(tr -d '\r\n ' < VERSION)
@@ -97,7 +153,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.rel.outputs.tag }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ needs.prepare.outputs.tag || github.sha }}
           name: PP Remote ${{ steps.rel.outputs.tag }}
           body_path: release-notes.md
           files: dist/pp-remote-proxy.exe
