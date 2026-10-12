@@ -19,7 +19,6 @@
     "next": ["/v1/trigger/next"],
     "previous": ["/v1/trigger/previous"],
     "clear-slide": ["/v1/clear/layer/slide"],
-    "clear-media": ["/v1/clear/layer/media"],
     "clear-all": CLEAR_ALL.map(l => `/v1/clear/layer/${l}`),
   };
 

@@ -13,8 +13,8 @@
   /* ---- phone remote for ProPresenter ---------------------------------------
      Remote: the live slide, the live item's slides, thumb-sized Prev/Next (Next
      is the biggest target because it's pressed most). Playlist: arrangements,
-     start/show items, add from a library, remove. Macros: ProPresenter's macros
-     and Clear all. All ProPresenter calls are in pp.js. */
+     show items, add from a library, remove. Macros: the stage team's macros and
+     Clear all. All ProPresenter calls are in pp.js. */
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; height:100%; }
   body { background:#111; color:#eee; font:16px/1.35 -apple-system, system-ui, sans-serif;
@@ -84,8 +84,7 @@
   #slides.dense .cue .cap { padding:2px 5px 3px; justify-content:center; }
   .pad { display:grid; grid-template-columns:1fr 2fr; gap:12px; height:110px; flex:none; }
   .clears button { min-height:48px; }
-  .clears { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; flex:none; }
-  .clears.macclear { grid-template-columns:1fr; }
+  .clears { display:grid; grid-template-columns:1fr; gap:12px; flex:none; }
   button { border:0; border-radius:14px; color:#fff; font:600 18px/1 inherit;
            font-family:inherit; touch-action:manipulation; user-select:none;
            -webkit-user-select:none; transition:transform .06s, filter .06s; }
@@ -139,6 +138,7 @@
   .plbar { display:flex; gap:8px; }
   .plbar select { flex:1; min-width:0; }
   .plbar button { background:#333; font-size:15px; padding:0 14px; }
+  .plbar button.reload { font-size:30px; min-width:64px; min-height:52px; padding:0 12px; }
   #plmsg { font-size:13px; color:#8a8; min-height:1.3em; }
   #plmsg.bad { color:#e77; }
   #items { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;
@@ -150,7 +150,6 @@
   .song .top { display:flex; align-items:center; gap:10px; }
   .song .nm { font-weight:600; flex:1; min-width:0; }
   .play { background:#166534; font-size:15px; padding:9px 14px; border-radius:10px; flex:none; }
-  .plbar #plstart { background:#166534; }
   .rm { background:#3a2323; font-size:15px; padding:9px 12px; border-radius:10px; flex:none; }
   .wide { background:#333; font-size:16px; padding:14px; flex:none; }
   #adder { flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; }
@@ -197,15 +196,13 @@
     </div>
     <div class="clears">
       <button id="clear-slide" data-act="clear-slide">Clear slide</button>
-      <button id="clear-media" data-act="clear-media" data-hold>Clear media<small>hold</small></button>
     </div>
   </div>
 
   <div class="view" id="v-playlist" hidden>
     <div class="plbar">
       <select id="plsel" aria-label="Playlist"><option value="">Loading playlists…</option></select>
-      <button id="plstart" aria-label="Start playlist" disabled>▶ Start</button>
-      <button id="plreload" aria-label="Reload">↻</button>
+      <button id="plreload" class="reload" aria-label="Reload">↻</button>
     </div>
     <div id="plmsg"></div>
     <div id="items"></div>
@@ -224,10 +221,10 @@
   <div class="view" id="v-macros" hidden>
     <div class="plbar">
       <div id="macmsg" class="macmsg">Tap a macro, then tap again to run it.</div>
-      <button id="macreload" aria-label="Reload macros">↻</button>
+      <button id="macreload" class="reload" aria-label="Reload macros">↻</button>
     </div>
     <div id="macros"></div>
-    <div class="clears macclear">
+    <div class="clears">
       <button id="clear-all" data-act="clear-all" data-hold>Clear all<small>hold</small></button>
     </div>
   </div>
@@ -500,7 +497,7 @@
   document.querySelectorAll("button[data-act]:not([data-hold])").forEach(b =>
     b.addEventListener("click", () => act(b)));
 
-  // Clear media / Clear all fire only after being held for HOLD_MS.
+  // Clear all fires only after being held for HOLD_MS.
   const HOLD_MS = 1500;
   document.querySelectorAll("button[data-hold]").forEach(b => {
     let start = 0, raf = 0;
@@ -566,7 +563,6 @@
   async function loadPlaylist() {
     const id = $("plsel").value, list = $("items");
     list.innerHTML = "";
-    $("plstart").disabled = !id;
     plEditable = false;
     syncAddButton();
     if (!id) { plmsg(true, ""); return; }
@@ -671,27 +667,20 @@
     sel.value = current || NONE;
   }
 
-  // ---- putting a playlist (or one item of it) on screen -------------------
+  // ---- putting one playlist item on screen ---------------------------------
   async function trigger(playlistId, it, btn) {
     btn.disabled = true;
-    plmsg(true, it ? `Showing "${it.name}"…` : "Starting playlist…");
+    plmsg(true, `Showing "${it.name}"…`);
     try {
-      await api.triggerPlaylist(playlistId, it ? it.index : null, it ? it.name : null);
+      await api.triggerPlaylist(playlistId, it.index, it.name);
       if (navigator.vibrate) navigator.vibrate(15);
-      plmsg(true, it ? `On screen: "${it.name}".` : "Playlist started.");
+      plmsg(true, `On screen: "${it.name}".`);
     } catch (e) {
       plmsg(false, e.message);
     } finally {
       btn.disabled = false;
     }
   }
-
-  $("plstart").addEventListener("click", () => {
-    const sel = $("plsel");
-    if (!sel.value) return;
-    const name = sel.options[sel.selectedIndex].text;
-    if (confirm(`Start "${name}" from its first item?`)) trigger(sel.value, null, $("plstart"));
-  });
 
   // ---- editing: take an item out, add one from a library ------------------
   async function removeItem(playlistId, it, btn) {
@@ -817,9 +806,13 @@
   $("plreload").addEventListener("click", () => { playlistsLoaded = false; freshNext = true; loadPlaylists(); });
 
   // ---- macros ------------------------------------------------------------
-  // One button per ProPresenter macro. A macro can change what's on screen, so
+  // One button per stage macro (STAGE_MACROS). A macro can change what's on screen, so
   // the first tap only arms it; a second tap within ARM_MS runs it.
   const ARM_MS = 3000;
+  // Only these macros are shown, in this order. Names are matched ignoring case,
+  // spaces and punctuation, so "Kid's Lyrics" also matches "kids lyrics".
+  const STAGE_MACROS = ["Speaking", "Speaking without translation", "Music and lyrics", "Kid's lyrics"];
+  const macroKey = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   let macrosLoaded = false, armed = null, armTimer = 0;
 
   function macmsg(ok, msg) {
@@ -848,12 +841,18 @@
       const j = await api.macros();
       macrosLoaded = true;
       box.innerHTML = "";
-      if (!j.macros.length) {
-        box.innerHTML = '<div class="empty">No macros in ProPresenter.</div>';
+      const byKey = new Map();
+      j.macros.forEach(m => { if (!byKey.has(macroKey(m.name))) byKey.set(macroKey(m.name), m); });
+      const shown = STAGE_MACROS.map(n => byKey.get(macroKey(n))).filter(Boolean);
+      if (!shown.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = `None of these macros are in ProPresenter: ${STAGE_MACROS.join(", ")}.`;
+        box.appendChild(empty);
         macmsg(true, "");
         return;
       }
-      j.macros.forEach(m => {
+      shown.forEach(m => {
         const b = document.createElement("button");
         b.className = "mac";
         if (m.color) { b.style.setProperty("--c", m.color); b.style.setProperty("--t", readableOn(m.color)); }
@@ -865,7 +864,9 @@
         b.addEventListener("click", () => tapMacro(m, b));
         box.appendChild(b);
       });
-      macmsg(true, "Tap a macro, then tap again to run it.");
+      const missing = STAGE_MACROS.filter(n => !byKey.has(macroKey(n)));
+      if (missing.length) macmsg(false, `Not in ProPresenter: ${missing.join(", ")}.`);
+      else macmsg(true, "Tap a macro, then tap again to run it.");
     } catch (e) {
       macmsg(false, `Couldn't load macros: ${e.message}`);
     }

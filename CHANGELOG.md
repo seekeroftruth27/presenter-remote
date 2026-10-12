@@ -5,6 +5,18 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- **Macros tab** shows only the stage team's macros: Speaking, Speaking without
+  translation, Music and lyrics, and Kid's lyrics. Any that ProPresenter doesn't
+  have are named at the top of the tab.
+- **↻ (reload)** buttons are bigger.
+
+### Removed
+- **Clear media** on the Remote tab; only slides are needed. **Clear all**
+  (hold) on the Macros tab still clears everything.
+- **▶ Start** for a whole playlist. **▶** on each item still puts that item on
+  screen.
+
 ## [v1.0.2] — 2026-10-12
 
 ### Fixed
