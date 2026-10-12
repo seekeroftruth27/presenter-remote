@@ -356,6 +356,19 @@
         return { ok: true, macros };
       },
 
+      // Macro collections (ProPresenter's Macros panel groups): [{name, uuids}],
+      // each listing its macros' uuids in the collection's order.
+      async macroCollections() {
+        let raw = await getJSON("/v1/macro_collections");
+        if (raw && !Array.isArray(raw)) raw = raw.macro_collections || raw.collections || raw.items || [];
+        const cols = (raw || []).map(c => ({
+          name: ident(c).name,
+          uuids: ((c || {}).macros || []).map(m => ident(m).uuid).filter(Boolean),
+        }));
+        if (raw && raw.length && !cols.some(c => c.name)) throw unrecognised(raw, "its macro collections");
+        return { ok: true, collections: cols };
+      },
+
       async triggerMacro(id) {
         if (!/^[0-9A-Za-z-]{1,64}$/.test(id || "")) throw new Error("bad id");
         await call("GET", `/v1/macro/${id}/trigger`);

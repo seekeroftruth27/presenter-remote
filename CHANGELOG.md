@@ -5,6 +5,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- **Macros tab** shows the macros in ProPresenter's **Default** macro
+  collection, in its order, instead of a fixed list of names. Edit that
+  collection in ProPresenter to change the buttons.
+
 ## [v1.1.0] — 2026-10-12
 
 Changes from the music director's review, sized for an iPad on stage.

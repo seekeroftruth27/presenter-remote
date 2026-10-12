@@ -13,9 +13,10 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - **Add** presentations from a library (with search).
   - Items under an **Announcements** header are greyed out and can't be played, moved or removed from here.
 - **Macros tab:**
-  - The stage team's macros as buttons in their own colours: Speaking, Welcome,
-    Music & Lyrics, Youth Music and Kid's Lyrics. The list is `STAGE_MACROS` in
-    `web/index.html`.
+  - The macros in ProPresenter's **Default** macro collection, in that
+    collection's order, as buttons in their own colours. Change what the stage
+    team sees by editing that collection in ProPresenter. The collection's name
+    is `MACRO_COLLECTION` in `web/index.html`.
   - The first tap arms a macro; a second tap within 3 s runs it.
 
 > **Free to use.** If PP Remote helps your church, donations are welcome by
