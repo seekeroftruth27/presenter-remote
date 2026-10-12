@@ -1,0 +1,138 @@
+# PP Remote
+
+A phone remote for **ProPresenter 7** (7.9 or later), using its network API.
+
+- **Remote tab:**
+  - **Live** panel: the slide on screen now (thumbnail, "Slide n of N", group, text).
+  - **Preview** of the live item's slides, with a 1–5 column zoom. The grid follows the live slide, and you tap a slide to show it.
+  - Big **Prev / Next** buttons.
+  - **Clear slide** (tap) and **Clear media** (hold ~1.5 s).
+- **Playlist tab:**
+  - Pick each song's **arrangement**.
+  - **Start** a playlist, or **▶** any item in it.
+  - **Add** presentations from a library (with search), and **✕ remove** items.
+- **Macros tab:**
+  - ProPresenter's macros as buttons in their own colours. The first tap arms one; a second tap within 3 s runs it.
+  - **Clear all** (hold).
+
+> **Free to use.** If PP Remote helps your church, donations are welcome by
+> **Zelle** to **giving@emanuel-church.com**. Thank you!
+
+It comes two ways. Both are the same page (`web/`), and all ProPresenter calls are in `web/pp.js`.
+
+| | Needs | Good for |
+|---|---|---|
+| **iPhone app** (`mobile/`) | Nothing running at church but ProPresenter | Everyday use |
+| **Browser + proxy** (`proxy/`) | `pp-remote-proxy.exe` (or Python) running on a PC on the same network | Any phone, no install on the phone |
+
+## Set up ProPresenter
+
+In ProPresenter: **Settings → Network**, turn on **Enable Network**, and note the
+**IP address and port**. Give that computer a fixed IP (a DHCP reservation in the
+router) so the address doesn't change between Sundays.
+
+## Browser + proxy
+
+ProPresenter's API sends no CORS headers, so a web page can't call it directly.
+The proxy serves the page and forwards its `/v1/...` calls to ProPresenter. It
+forwards only `/v1/` paths, and only to that one address.
+
+**Windows:** download **pp-remote-proxy-exe** from the latest *Build Windows proxy*
+run (Actions tab → the run → Artifacts) and run it. The first time, it asks for
+ProPresenter's address and remembers it in `pp-proxy.txt` beside the exe.
+
+**Any OS with Python 3:** `python proxy/pp_proxy.py 192.168.1.50:1025 [--port 8080]`
+
+It prints the address to open on the phone, e.g. `http://192.168.1.20:8080`.
+In Safari, use *Share → Add to Home Screen* to open it full-screen.
+
+## iPhone app
+
+`mobile/` packages `web/` with [Capacitor](https://capacitorjs.com). Inside the
+app, Capacitor's native HTTP carries every request, and native requests aren't
+subject to CORS, so the app calls ProPresenter itself. On first launch it opens
+**⚙**: enter ProPresenter's address and tap **Save & connect**. iOS asks once for
+local-network access; allow it.
+
+### Building without a Mac
+
+The **Build iPhone app** workflow builds on GitHub's macOS runners:
+
+- **Every push that touches `web/` or `mobile/`:** a compile check, plus
+  **PP-Remote-unsigned-ipa** under the run's Artifacts.
+- **Tag `ios-v…`** (`git tag ios-v1 && git push origin ios-v1`, a new number each
+  time): a signed build uploaded to **TestFlight**. This needs:
+  - an Apple Developer account ($99/yr; nonprofits can apply for a fee waiver);
+  - an App Store Connect app with bundle ID `org.aron.ppremote`;
+  - the four secrets listed at the top of `.github/workflows/build-ios.yml`.
+
+### Testing without App Store Connect (free, 7 days at a time)
+
+1. Download **PP-Remote-unsigned-ipa** from a build and unzip it.
+2. Install [Sideloadly](https://sideloadly.io) on Windows or Mac. On Windows,
+   also install iTunes and iCloud from Apple's site, not the Microsoft Store.
+3. Plug in the iPhone, drag the `.ipa` into Sideloadly, enter your Apple ID, and
+   click **Start**.
+4. On the iPhone:
+   - **Settings → Privacy & Security → Developer Mode** on.
+   - **Settings → General → VPN & Device Management** → trust your Apple ID.
+
+A free Apple ID's install stops opening after 7 days. Run Sideloadly again to
+renew it.
+
+### Building on a Mac
+
+```
+cd mobile
+npm ci
+npm run sync        # copy web/ into the iOS project
+npx cap open ios    # Xcode: pick your team under Signing, then Run
+```
+
+## How editing a playlist works
+
+ProPresenter's API can't change one playlist item on its own. It can only replace
+the whole playlist. So every edit (arrangement, add, remove) works like this:
+
+1. Re-read the playlist, and check the item is still the one the phone showed.
+2. Write the whole playlist back.
+3. Read it again to confirm the change took.
+4. If it didn't take, put the original back.
+
+If ProPresenter refuses a write outright, nothing changed, and the page shows
+ProPresenter's own reason. Planning Center playlists are left read-only.
+
+ProPresenter can't list a song's arrangements either. The choices offered are the
+names that song already uses in any playlist (re-scanned at most every 10
+minutes, or on ↻), and **Other…** takes a typed name.
+
+## Notes
+
+- **Light on ProPresenter:**
+  - It polls once a second, and only while the Remote tab is open.
+  - Thumbnails load only near the screen, two at a time.
+  - The arrangement scan is cached.
+- **Not authenticated:** anyone on the same network who can reach the proxy or
+  ProPresenter can control it. That's the same as ProPresenter's own API.
+- **Still unconfirmed on real ProPresenter:**
+  - Playlist add/remove.
+  - Macros.
+  - Whether the preview's slide numbering matches a song that uses an
+    arrangement.
+
+  Try these on a test playlist first, and report any error message the page shows.
+
+## Releasing
+
+Each release is one Windows file, `pp-remote-proxy.exe`, built by CI and attached
+to a GitHub Release. Add changes under `## [Unreleased]` in `CHANGELOG.md` as you
+go, then on an up-to-date `main` run the **`release`** skill (`/release
+[patch|minor|major|X.Y.Z]`), or the script it drives:
+
+```
+python scripts/release.py minor --dry-run   # check the version and notes
+python scripts/release.py minor --push      # bump, commit, tag vX.Y.Z, push
+```
+
+The `vX.Y.Z` tag starts **Build Windows proxy**, which builds and smoke-tests the
+exe and publishes the Release with it attached and that version's notes.

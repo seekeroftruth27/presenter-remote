@@ -1,0 +1,116 @@
+name: Build iPhone app
+
+# Builds the PP Remote iPhone app (mobile/) on a macOS runner, so no Mac is needed.
+#
+#   - Every push that touches the app (web/, mobile/): a simulator build that
+#     proves it compiles, plus an unsigned .ipa under the run's Artifacts that
+#     Sideloadly can install with an ordinary Apple ID (7 days at a time).
+#   - Push a tag named ios-v* (e.g. `git tag ios-v1 && git push origin ios-v1`),
+#     or run manually with "upload" ticked: a signed build sent to TestFlight. Needs an Apple
+#     Developer account and these repository secrets (Settings -> Secrets ->
+#     Actions), from App Store Connect -> Users and Access -> Integrations:
+#       APPLE_TEAM_ID           your 10-character Team ID
+#       ASC_KEY_ID              the API key's Key ID
+#       ASC_ISSUER_ID           the Issuer ID shown above the keys
+#       ASC_KEY_P8              the contents of the downloaded .p8 key file
+#     and an app record in App Store Connect with bundle ID org.aron.ppremote.
+#
+# In a private repo macOS minutes count 10x against the free Actions minutes;
+# in a public repo they're free.
+on:
+  push:
+    branches: ["**"]
+    tags: ["ios-v*"]
+    paths:
+      - "web/**"
+      - "mobile/**"
+      - ".github/workflows/build-ios.yml"
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "Sign and upload to TestFlight"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile
+        shell: bash   # explicit bash runs with pipefail, so `xcodebuild | tail` can't hide a failure
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install and sync
+        run: |
+          npm ci
+          npm run sync
+
+      - name: Simulator build (compile check)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+
+      # An unsigned device build, downloadable from the run's Artifacts. Sideloadly
+      # (free, Windows/Mac) signs it with an ordinary Apple ID and installs it over
+      # USB -- no paid membership or App Store Connect needed, but a free-account
+      # install stops working after 7 days and has to be redone.
+      - name: Unsigned .ipa for sideloading
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -n 20
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/App.app" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qr "$RUNNER_TEMP/PP-Remote-unsigned.ipa" Payload)
+          ls -l "$RUNNER_TEMP/PP-Remote-unsigned.ipa"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PP-Remote-unsigned-ipa
+          path: ${{ runner.temp }}/PP-Remote-unsigned.ipa
+          retention-days: 14
+
+      - name: Archive and upload to TestFlight
+        if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/ios-v') }}
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          for v in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            if [ -z "${!v}" ]; then echo "::error::Missing secret $v"; exit 1; fi
+          done
+          KEY="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$ASC_KEY_P8" > "$KEY"
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          # Each upload needs a new build number.
+          BUILD="$GITHUB_RUN_NUMBER"
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD" $AUTH archive | tail -n 40
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" $AUTH | tail -n 40
+          rm -f "$KEY"

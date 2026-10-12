@@ -1,0 +1,17 @@
+{
+  "name": "presenter-remote",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PP Remote iPhone app (Capacitor). Talks to ProPresenter directly; no server needed.",
+  "scripts": {
+    "build": "node build-www.js",
+    "sync": "node build-www.js && cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}

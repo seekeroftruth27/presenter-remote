@@ -1,0 +1,70 @@
+name: Build Windows proxy
+
+# Builds pp-remote-proxy.exe: the browser version's proxy (proxy/pp_proxy.py)
+# with the page bundled in, as one Windows file that needs no Python. Download it
+# from the run's Artifacts. On a vX.Y.Z tag (made by the release skill,
+# scripts/release.py) it also publishes the GitHub Release for that tag, with
+# the exe attached and the version's CHANGELOG section as the notes.
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+    paths:
+      - "web/**"
+      - "proxy/**"
+      - ".github/workflows/build-proxy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to attach the exe to a Release on a tag
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build one-file exe
+        run: |
+          python -m pip install --upgrade pip pyinstaller
+          pyinstaller --noconfirm --clean --onefile --name pp-remote-proxy --add-data "web;web" --add-data "VERSION;." proxy/pp_proxy.py
+
+      - name: Smoke test (starts, serves the page)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist/pp-remote-proxy.exe -ArgumentList "127.0.0.1:9", "--port", "8099" -PassThru
+          Start-Sleep -Seconds 4
+          $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8099/
+          Stop-Process -Id $p.Id
+          if ($r.Content -notmatch "PP Remote") { throw "page not served" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pp-remote-proxy-exe
+          path: dist/pp-remote-proxy.exe
+          if-no-files-found: error
+
+      - name: Release notes from CHANGELOG (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: python
+        run: |
+          import os, re
+          tag = os.environ["GITHUB_REF_NAME"]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"^## \[" + re.escape(tag) + r"\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
+          notes = m.group(1).strip() if m else f"PP Remote {tag}"
+          notes += "\n\n**Download:** `pp-remote-proxy.exe` below. Run it on a PC on the same network as ProPresenter; see the README."
+          notes += "\n\n**Free to use.** If PP Remote helps your church, donations are welcome by **Zelle** to **giving@emanuel-church.com**. Thank you!"
+          open("release-notes.md", "w", encoding="utf-8").write(notes + "\n")
+
+      - name: Publish the GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PP Remote ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: dist/pp-remote-proxy.exe
