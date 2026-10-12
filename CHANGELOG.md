@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.1.0] — 2026-10-12
+
 Changes from the music director's review, sized for an iPad on stage.
 
 ### Added
@@ -33,13 +35,4 @@ Changes from the music director's review, sized for an iPad on stage.
 - **Clear media** and **Clear all**: the stage team only needs Clear slide.
 - **▶ Start** for a whole playlist. **▶** on each item still puts that item on
   screen.
-
-## [v1.0.2] — 2026-10-12
-
-### Fixed
-- **Adding from a library was still refused** ("missing field
-  `arrangement_name`"): the new item was built with fewer fields than
-  ProPresenter requires. It's now shaped like a song already in the playlist,
-  every item keeps `arrangement_name` (empty for none), and choosing **No
-  arrangement** sets it empty instead of removing it.
 
