@@ -58,6 +58,7 @@ jobs:
           m = re.search(r"^## \[" + re.escape(tag) + r"\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
           notes = m.group(1).strip() if m else f"PP Remote {tag}"
           notes += "\n\n**Download:** `pp-remote-proxy.exe` below. Run it on a PC on the same network as ProPresenter; see the README."
+          notes += "\n\n**Free to use.** If PP Remote helps your church, donations are welcome by **Zelle** to **giving@emanuel-church.com**. Thank you!"
           open("release-notes.md", "w", encoding="utf-8").write(notes + "\n")
 
       - name: Publish the GitHub Release (tags only)
