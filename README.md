@@ -1,19 +1,22 @@
 # PP Remote
 
-A phone remote for **ProPresenter 7** (7.9 or later), using its network API.
+A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network API.
 
 - **Remote tab:**
   - **Live** panel: the slide on screen now (thumbnail, "Slide n of N", group, text).
   - **Preview** of the live item's slides, with a 1–5 column zoom. The grid follows the live slide, and you tap a slide to show it.
-  - Big **Prev / Next** buttons.
-  - **Clear slide** (tap) and **Clear media** (hold ~1.5 s).
+  - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** beside the zoom.
 - **Playlist tab:**
   - Pick each song's **arrangement**.
-  - **Start** a playlist, or **▶** any item in it.
-  - **Add** presentations from a library (with search), and **✕ remove** items.
+  - **▶** puts an item on screen.
+  - **≡** drag to reorder, and **🗑** remove.
+  - **Add** presentations from a library (with search).
+  - Items under an **Announcements** header are greyed out and can't be played, moved or removed from here.
 - **Macros tab:**
-  - ProPresenter's macros as buttons in their own colours. The first tap arms one; a second tap within 3 s runs it.
-  - **Clear all** (hold).
+  - The stage team's macros as buttons in their own colours: Speaking, Welcome,
+    Music & Lyrics, Youth Music and Kid's Lyrics. The list is `STAGE_MACROS` in
+    `web/index.html`.
+  - The first tap arms a macro; a second tap within 3 s runs it.
 
 > **Free to use.** If PP Remote helps your church, donations are welcome by
 > **Zelle** to **giving@emanuel-church.com**. Thank you!

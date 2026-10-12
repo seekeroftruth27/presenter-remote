@@ -13,14 +13,10 @@
   // requests at a time, and reuse it in between.
   const SUGGEST_TTL_MS = 10 * 60 * 1000;
   const SCAN_PARALLEL = 2;
-  const CLEAR_ALL = ["slide", "media", "video_input", "props", "messages",
-                     "announcements", "audio"];
   const ACTIONS = {
     "next": ["/v1/trigger/next"],
     "previous": ["/v1/trigger/previous"],
     "clear-slide": ["/v1/clear/layer/slide"],
-    "clear-media": ["/v1/clear/layer/media"],
-    "clear-all": CLEAR_ALL.map(l => `/v1/clear/layer/${l}`),
   };
 
   function normalize(url) {
@@ -332,6 +328,19 @@
         return this.editPlaylist(id, items => {
           checkItem(items, index, expectedName);
           items.splice(index, 1);
+          const names = items.map(it => (it.id || {}).name);
+          return after => after.length === names.length &&
+            after.every((it, i) => (it.id || {}).name === names[i]);
+        });
+      },
+
+      // Move one item to another position (both are indexes in the playlist as
+      // the phone showed it), only if `expectedName` is still at `from`.
+      async moveInPlaylist(id, from, to, expectedName) {
+        return this.editPlaylist(id, items => {
+          checkItem(items, from, expectedName);
+          if (!(to >= 0 && to < items.length)) throw new Error("The playlist changed in ProPresenter. Reload and try again.");
+          items.splice(to, 0, items.splice(from, 1)[0]);
           const names = items.map(it => (it.id || {}).name);
           return after => after.length === names.length &&
             after.every((it, i) => (it.id || {}).name === names[i]);
