@@ -13,6 +13,8 @@ on:
       - "web/**"
       - "proxy/**"
       - ".github/workflows/build-proxy.yml"
+  release:
+    types: [published]   # a release published on GitHub's website (it creates the tag)
   workflow_dispatch:
 
 permissions:
@@ -68,3 +70,4 @@ jobs:
           name: PP Remote ${{ github.ref_name }}
           body_path: release-notes.md
           files: dist/pp-remote-proxy.exe
+          overwrite_files: true   # a tag push and a website release may both fire

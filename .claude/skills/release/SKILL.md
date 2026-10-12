@@ -38,7 +38,16 @@ app ships separately, through TestFlight with an `ios-v*` tag (see README).
    - writes `VERSION`, renames `[Unreleased]` to `[vX.Y.Z] — date` and opens a fresh empty `[Unreleased]`;
    - commits `Release vX.Y.Z`, adds an annotated tag `vX.Y.Z`, and pushes `main` and the tag.
 
-   If pushing from this environment isn't possible, run it without `--push` and tell the user to run `git push origin main vX.Y.Z`.
+   **If pushing `main` or tags is refused** (some environments only allow pushes to
+   work branches), don't work around it:
+   - Run it without `--push`, then delete the local tag (`git tag -d vX.Y.Z`; it
+     was never pushed) and move the `Release vX.Y.Z` commit onto a branch such
+     as `claude/release-vX.Y.Z`.
+   - Push that branch and open a PR into `main` titled `Release vX.Y.Z`.
+   - Once it's merged, the user publishes the release on GitHub: **Releases →
+     Draft a new release → Choose a tag: `vX.Y.Z`, create on publish, target
+     `main` → Publish release.** Publishing starts the same workflow, which
+     attaches the exe and replaces the notes with the CHANGELOG section.
 6. **Watch the build.**
    - The tag starts *Build Windows proxy*: it builds the exe, smoke-tests it (it must start and serve the page), and publishes the GitHub Release `PP Remote vX.Y.Z` with `pp-remote-proxy.exe` attached and that version's CHANGELOG section as the notes.
    - Wait for the run to finish.
