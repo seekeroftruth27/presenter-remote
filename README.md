@@ -136,3 +136,8 @@ python scripts/release.py minor --push      # bump, commit, tag vX.Y.Z, push
 
 The `vX.Y.Z` tag starts **Build Windows proxy**, which builds and smoke-tests the
 exe and publishes the Release with it attached and that version's notes.
+
+From a cloud session, which can't push `main` or tags, the skill opens a
+`Release vX.Y.Z` PR instead. After it's merged, run **Build Windows proxy** on
+`main` with **release_version** `X.Y.Z` (Actions → Build Windows proxy → Run
+workflow). The workflow creates the tag and the Release itself.
