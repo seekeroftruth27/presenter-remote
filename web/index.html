@@ -13,8 +13,8 @@
   /* ---- phone remote for ProPresenter ---------------------------------------
      Remote: the live slide, the live item's slides, thumb-sized Prev/Next (Next
      is the biggest target because it's pressed most). Playlist: arrangements,
-     show items, add from a library, remove. Macros: the stage team's macros and
-     Clear all. All ProPresenter calls are in pp.js. */
+     show items, reorder, add from a library, remove. Macros: the stage team's
+     macros. All ProPresenter calls are in pp.js. */
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; height:100%; }
   body { background:#111; color:#eee; font:16px/1.35 -apple-system, system-ui, sans-serif;
@@ -22,20 +22,20 @@
          padding:max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
   .tabs { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; background:#1c1c1c;
           border-radius:10px; padding:3px; }
-  .tabs button { background:transparent; color:#999; font-size:15px; padding:9px 0; border-radius:8px; }
+  .tabs button { background:transparent; color:#999; font-size:20px; padding:17px 0; border-radius:8px; }
   .tabs button.on { background:#333; color:#fff; }
   .view { flex:1; display:flex; flex-direction:column; gap:12px; min-height:0; }
   .view[hidden] { display:none; }
-  #state { font-size:13px; color:#8a8; min-height:1.3em; }
+  #state { font-size:16px; color:#8a8; min-height:1.3em; }
   #state.bad { color:#e77; }
   /* live preview: the active presentation's slides, current one ringed */
-  .nowbar { display:flex; align-items:center; gap:10px; }
+  .nowbar { display:flex; align-items:center; gap:12px; }
   #now { display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; }
   /* Thumbnail zoom: 1-5 columns; right = bigger slides (fewer columns). */
   .zoom { display:flex; align-items:center; gap:6px; flex:none; color:#888; font-size:14px; }
   .zoom input { width:96px; accent-color:#f59e0b; }
-  #now .item { font-weight:600; font-size:17px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #now .pl { font-size:12px; color:#888; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #now .item { font-weight:600; font-size:24px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #now .pl { font-size:16px; color:#888; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   /* Live panel: the slide on screen right now, big, whatever the grid is doing. */
   .live { display:flex; gap:10px; align-items:stretch; background:#1c1c1c; border-radius:12px;
           padding:8px; border-left:4px solid var(--gc, #f59e0b); flex:none; }
@@ -74,8 +74,7 @@
   .cue .grp { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .cue .bar { position:absolute; left:0; top:0; bottom:0; width:4px; }
   .cue.off { opacity:.35; }
-  .cue { cursor:pointer; touch-action:manipulation; transition:transform .06s; }
-  .cue:active { transform:scale(.97); }
+  .cue { cursor:pointer; touch-action:manipulation; }
   .cue.pend { outline-color:#f59e0b88; }
   .cue.on { outline-color:#f59e0b; }
   .cue.on .cap { background:#f59e0b; color:#111; }
@@ -83,39 +82,33 @@
   #slides.dense .cue .grp { display:none; }        /* 4-5 columns: just the number */
   #slides.dense .cue .cap { padding:2px 5px 3px; justify-content:center; }
   .pad { display:grid; grid-template-columns:1fr 2fr; gap:12px; height:110px; flex:none; }
-  .clears button { min-height:48px; }
-  .clears { display:grid; grid-template-columns:1fr; gap:12px; flex:none; }
+  .pad button { font-size:clamp(22px, 6vw, 44px); font-weight:800; letter-spacing:.04em; white-space:nowrap; }
   button { border:0; border-radius:14px; color:#fff; font:600 18px/1 inherit;
            font-family:inherit; touch-action:manipulation; user-select:none;
            -webkit-user-select:none; transition:transform .06s, filter .06s; }
   button:active { transform:scale(.97); filter:brightness(1.3); }
   button:disabled { opacity:.5; }
   #previous { background:#333; }
-  #next { background:#2563eb; font-size:26px; }
-  .clears button { background-color:#3a2323; font-size:15px; padding:16px 4px; }
-  #clear-all { background-color:#7f1d1d; }
-  /* Hold-to-clear: the button fills left to right while held; let go early and
-     nothing happens. Keeps a pocket tap or a slip off Prev from blanking the screen. */
-  .clears button[data-hold] { --p:0%; display:flex; flex-direction:column; align-items:center;
-    justify-content:center; gap:3px; -webkit-touch-callout:none;
-    background-image:linear-gradient(90deg, rgba(255,255,255,.28) var(--p), transparent var(--p)); }
-  .clears button[data-hold] small { font-size:10px; font-weight:500; opacity:.7;
-    text-transform:uppercase; letter-spacing:.08em; }
-  .clears button[data-hold]:active { transform:none; filter:none; }
-  .clears button[data-hold].nudge small { opacity:1; color:#fbbf24; }
+  #next { background:#2563eb; }
+  /* Clear slide sits in the top bar, small and quiet: it's needed, but rarely. */
+  #clear-slide { flex:none; min-height:48px; padding:0 14px; background:#2a2a2a; color:#bbb;
+                 font-size:15px; font-weight:600; border-radius:12px; }
+  @media (max-width:600px) {   /* phone: title on its own line, slider and Clear slide below */
+    .nowbar { flex-wrap:wrap; row-gap:6px; } #now { flex-basis:100%; } .zoom { margin-right:auto; }
+  }
 
   /* macros tab: one button per ProPresenter macro, in its colour. First tap arms
      it ("tap again"), a second tap within a few seconds runs it. */
-  .macmsg { flex:1; font-size:13px; color:#8a8; align-self:center; }
+  .macmsg { flex:1; font-size:16px; color:#8a8; align-self:center; }
   .macmsg.bad { color:#e77; }
   #macros { flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(2, minmax(0, 1fr));
             gap:10px; align-content:start; grid-auto-rows:max-content; padding:3px;
             -webkit-overflow-scrolling:touch; }
-  .mac { --c:#333; background-color:var(--c); color:var(--t, #fff); min-height:64px; padding:10px;
-         font-size:16px; line-height:1.2; border-radius:12px; overflow-wrap:anywhere;
+  .mac { --c:#333; background-color:var(--c); color:var(--t, #fff); min-height:128px; padding:12px;
+         font-size:24px; font-weight:700; line-height:1.2; border-radius:12px; overflow-wrap:anywhere;
          outline:3px solid transparent; display:flex; flex-direction:column;
          align-items:center; justify-content:center; gap:4px; }
-  .mac small { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+  .mac small { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
                display:none; }
   .mac.armed { outline-color:#fbbf24; animation:armed .8s ease-in-out infinite alternate; }
   .mac.armed small { display:block; }
@@ -138,20 +131,37 @@
   .plbar { display:flex; gap:8px; }
   .plbar select { flex:1; min-width:0; }
   .plbar button { background:#333; font-size:15px; padding:0 14px; }
-  .plbar button.reload { font-size:30px; min-width:64px; min-height:52px; padding:0 12px; }
-  #plmsg { font-size:13px; color:#8a8; min-height:1.3em; }
+  .plbar button.reload { font-size:38px; min-width:84px; min-height:68px; padding:0 12px; }
+  #plsel { font-size:20px; padding:20px 12px; }
+  #plmsg { font-size:15px; color:#8a8; min-height:1.3em; }
   #plmsg.bad { color:#e77; }
   #items { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;
            -webkit-overflow-scrolling:touch; }
-  .hdr { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#888;
+  .hdr { font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:#888;
          margin:8px 2px 0; }
-  .song { background:#1c1c1c; border-radius:12px; padding:10px 12px; display:flex;
-          flex-direction:column; gap:8px; }
-  .song .top { display:flex; align-items:center; gap:10px; }
-  .song .nm { font-weight:600; flex:1; min-width:0; }
-  .play { background:#166534; font-size:15px; padding:9px 14px; border-radius:10px; flex:none; }
-  .rm { background:#3a2323; font-size:15px; padding:9px 12px; border-radius:10px; flex:none; }
+  /* One playlist item per row: grip, name, arrangement, play, remove. On a phone
+     the arrangement drops to a second line. */
+  .song { background:#1c1c1c; border-radius:12px; padding:8px 10px; display:grid; gap:6px 10px;
+          align-items:center; grid-template-areas:"grip nm arr play rm";
+          grid-template-columns:44px minmax(0, 1fr) minmax(0, 300px) 68px 68px; }
+  @media (max-width:600px) {
+    .song { grid-template-areas:"grip nm play rm" "grip arr arr arr";
+            grid-template-columns:36px minmax(0, 1fr) 60px 60px; }
+  }
+  .song .nm { grid-area:nm; font-weight:600; font-size:20px; min-width:0; overflow-wrap:anywhere; }
+  .song select, .song .other { grid-area:arr; }
+  .song select { font-size:17px; }
+  .grip { grid-area:grip; align-self:stretch; display:flex; align-items:center; justify-content:center;
+          color:#888; touch-action:none; cursor:grab; }
+  .grip svg, .rm svg { width:26px; height:26px; }
+  .play, .rm { min-height:56px; font-size:24px; border-radius:12px; padding:0;
+               display:flex; align-items:center; justify-content:center; }
+  .play { grid-area:play; background:#166534; }
+  .rm { grid-area:rm; background:#3a2323; }
+  .song.ro { opacity:.4; }
+  .song.drag { outline:2px solid #f59e0b; background:#262626; }
   .wide { background:#333; font-size:16px; padding:14px; flex:none; }
+  #pladd { background:#166534; font-size:21px; padding:20px; }
   #adder { flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; }
   #adder[hidden], #items[hidden], #pladd[hidden] { display:none; }
   #libq { font:inherit; font-size:16px; color:#eee; background:#1c1c1c; border:1px solid #333;
@@ -180,6 +190,7 @@
       <label class="zoom" title="Slide size"><span aria-hidden="true">▫</span>
         <input id="zoom" type="range" min="1" max="5" step="1" value="4" aria-label="Slide size">
         <span aria-hidden="true">◻</span></label>
+      <button id="clear-slide" data-act="clear-slide">Clear slide</button>
     </div>
     <div id="live" class="live" hidden>
       <div id="liveimg" class="limg"></div>
@@ -191,11 +202,8 @@
     </div>
     <div id="slides"><div class="empty">Nothing showing</div></div>
     <div class="pad">
-      <button id="previous" data-act="previous">◀ Prev</button>
-      <button id="next" data-act="next">Next ▶</button>
-    </div>
-    <div class="clears">
-      <button id="clear-slide" data-act="clear-slide">Clear slide</button>
+      <button id="previous" data-act="previous">◀ PREV</button>
+      <button id="next" data-act="next">NEXT ▶</button>
     </div>
   </div>
 
@@ -224,9 +232,6 @@
       <button id="macreload" class="reload" aria-label="Reload macros">↻</button>
     </div>
     <div id="macros"></div>
-    <div class="clears">
-      <button id="clear-all" data-act="clear-all" data-hold>Clear all<small>hold</small></button>
-    </div>
   </div>
 
   <div class="view" id="v-settings" hidden>
@@ -368,7 +373,7 @@
     shownIndex = index;
     const cues = $("slides").querySelectorAll(".cue");
     cues.forEach((c, i) => c.classList.toggle("on", i === index));
-    follow(true);
+    follow();
     showLive(index);
   }
 
@@ -386,12 +391,18 @@
     const key = `${thumbUuid}/${index}`;
     if (key === liveKey) return;
     liveKey = key;
+    // Keep showing the previous picture until the new one arrives, rather than
+    // flashing the slide's text in between; fall back to the text if it's slow.
     const img = $("liveimg");
-    img.classList.remove("pic");
-    img.style.backgroundImage = "";
     img.textContent = s ? s.text : "";
+    const slow = setTimeout(() => {
+      if (liveKey === key) { img.classList.remove("pic"); img.style.backgroundImage = ""; }
+    }, 700);
     const uuid = thumbUuid, pic = new Image();
-    pic.onload = () => { if (liveKey === key) { img.style.backgroundImage = `url("${pic.src}")`; img.classList.add("pic"); } };
+    pic.onload = () => {
+      clearTimeout(slow);
+      if (liveKey === key) { img.style.backgroundImage = `url("${pic.src}")`; img.classList.add("pic"); }
+    };
     pic.onerror = () => {
       if (api.thumbBlobUrl && !pic.dataset.retried) {
         pic.dataset.retried = "1";
@@ -404,8 +415,9 @@
   // Keep the live slide on screen: if it (or, room permitting, the slide after
   // it) is outside the grid's visible area, scroll just enough to bring it in.
   // Runs when the slide changes, the zoom changes or the screen rotates; in
-  // between, the operator can scroll around freely.
-  function follow(smooth) {
+  // between, the operator can scroll around freely. It jumps rather than glides:
+  // an animated scroll on every slide change is distracting on stage.
+  function follow() {
     const grid = $("slides"), cues = grid.querySelectorAll(".cue");
     const cur = cues[shownIndex];
     if (!cur) return;
@@ -423,7 +435,7 @@
       target = Math.min(curTop - pad, nxtBottom + pad - view);
     }
     target = Math.max(0, target);
-    if (Math.abs(target - st) > 1) grid.scrollTo({ top: target, behavior: smooth ? "smooth" : "auto" });
+    if (Math.abs(target - st) > 1) grid.scrollTop = target;
   }
 
   // Zoom: the slider picks the column count (right = bigger slides = fewer columns).
@@ -434,10 +446,10 @@
     grid.classList.toggle("dense", cols >= 4);
     $("zoom").value = z;
     store.set("pp-zoom", String(z));
-    follow(false);   // the live slide moved with the reflow; put it back in view
+    follow();   // the live slide moved with the reflow; put it back in view
   }
   $("zoom").addEventListener("input", e => setZoom(e.target.value));
-  window.addEventListener("resize", () => follow(false));
+  window.addEventListener("resize", () => follow());
 
   // Tap a slide to put it on screen. The server only triggers it if this
   // presentation is still the live one.
@@ -480,57 +492,20 @@
   async function act(btn) {
     const name = btn.dataset.act;
     btn.disabled = true;
-    const label = btn.firstChild.textContent.trim();
-    const say = btn.closest("#v-macros") ? macmsg : show;   // where the button lives
+    const label = btn.textContent.trim();
     try {
       await api.action(name);
       if (navigator.vibrate) navigator.vibrate(15);
-      if (say !== show) say(true, `${label}: done.`);
       poll();
     } catch (e) {
-      say(false, `${label} failed: ${e.message}`);
+      show(false, `${label} failed: ${e.message}`);
     } finally {
       btn.disabled = false;
     }
   }
 
-  document.querySelectorAll("button[data-act]:not([data-hold])").forEach(b =>
+  document.querySelectorAll("button[data-act]").forEach(b =>
     b.addEventListener("click", () => act(b)));
-
-  // Clear all fires only after being held for HOLD_MS.
-  const HOLD_MS = 1500;
-  document.querySelectorAll("button[data-hold]").forEach(b => {
-    let start = 0, raf = 0;
-    const reset = () => { cancelAnimationFrame(raf); start = 0; b.style.setProperty("--p", "0%"); };
-    const tick = () => {
-      const f = Math.min(1, (performance.now() - start) / HOLD_MS);
-      b.style.setProperty("--p", `${f * 100}%`);
-      if (f < 1) { raf = requestAnimationFrame(tick); return; }
-      reset();
-      act(b);
-    };
-    b.addEventListener("pointerdown", e => {
-      if (b.disabled) return;
-      e.preventDefault();
-      try { b.setPointerCapture(e.pointerId); } catch {}
-      start = performance.now();
-      raf = requestAnimationFrame(tick);
-    });
-    const hint = b.querySelector("small");
-    let nudgeTimer = 0;
-    const early = () => {   // let go too soon: say so on the button itself
-      if (!start) return;
-      reset();
-      hint.textContent = "keep holding";
-      b.classList.add("nudge");
-      clearTimeout(nudgeTimer);
-      nudgeTimer = setTimeout(() => { hint.textContent = "hold"; b.classList.remove("nudge"); }, 1800);
-    };
-    b.addEventListener("pointerup", early);
-    b.addEventListener("pointercancel", reset);
-    b.addEventListener("lostpointercapture", () => { if (start) early(); });
-    b.addEventListener("contextmenu", e => e.preventDefault());   // long-press menu on phones
-  });
 
   // ---- playlist arrangements ---------------------------------------------
   async function loadPlaylists() {
@@ -577,7 +552,13 @@
         plmsg(true, j.items.some(it => it.type === "presentation") ? "" : "No songs in this playlist.");
       }
       const pco = j.items.some(x => x.is_pco);
-      j.items.forEach(it => list.appendChild(renderItem(id, it, pco)));
+      // Items under an "Announcements" header (up to the next header) are shown
+      // greyed out and can't be played, moved or removed from here.
+      let section = "";
+      j.items.forEach(it => {
+        if (it.type === "header") section = it.name;
+        list.appendChild(renderItem(id, it, pco, READ_ONLY_SECTION.test(section)));
+      });
       plEditable = !pco;
       syncAddButton();
     } catch (e) {
@@ -585,7 +566,11 @@
     }
   }
 
-  function renderItem(playlistId, it, isPco) {
+  const READ_ONLY_SECTION = /announcement/i;
+  const ICON_GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+  const ICON_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+
+  function renderItem(playlistId, it, isPco, readOnly) {
     if (it.type === "header") {
       const h = document.createElement("div");
       h.className = "hdr";
@@ -593,27 +578,35 @@
       return h;
     }
     const row = document.createElement("div");
-    row.className = "song";
-    const top = document.createElement("div");
-    top.className = "top";
+    row.className = "song" + (readOnly ? " ro" : "");
     const nm = document.createElement("div");
     nm.className = "nm";
     nm.textContent = it.name;
+    row.appendChild(nm);
+    if (!isPco && !readOnly) {
+      const grip = document.createElement("div");
+      grip.className = "grip";
+      grip.innerHTML = ICON_GRIP;
+      grip.setAttribute("aria-label", `Drag to move ${it.name}`);
+      grip.addEventListener("pointerdown", e => dragItem(e, row, playlistId, it));
+      row.appendChild(grip);
+    }
     const play = document.createElement("button");
     play.className = "play";
     play.textContent = "▶";
     play.setAttribute("aria-label", `Show ${it.name}`);
+    play.disabled = readOnly;
     play.addEventListener("click", () => trigger(playlistId, it, play));
-    top.append(nm, play);
+    row.appendChild(play);
     if (!isPco) {
       const rm = document.createElement("button");
       rm.className = "rm";
-      rm.textContent = "✕";
+      rm.innerHTML = ICON_TRASH;
       rm.setAttribute("aria-label", `Remove ${it.name}`);
+      rm.disabled = readOnly;
       rm.addEventListener("click", () => removeItem(playlistId, it, rm));
-      top.appendChild(rm);
+      row.appendChild(rm);
     }
-    row.appendChild(top);
     if (it.type !== "presentation") {
       const t = document.createElement("div");
       t.className = "other";
@@ -625,7 +618,8 @@
     const sel = document.createElement("select");
     sel.setAttribute("aria-label", `Arrangement for ${it.name}`);
     fillChoices(sel, it.choices, it.arrangement);
-    sel.disabled = isPco;
+    const locked = isPco || readOnly;
+    sel.disabled = locked;
     let current = it.arrangement;
     sel.addEventListener("change", async () => {
       let pick = sel.value;
@@ -650,7 +644,7 @@
         plmsg(false, e.message);
       } finally {
         row.classList.remove("busy");
-        sel.disabled = isPco;
+        sel.disabled = locked;
       }
     });
     row.appendChild(sel);
@@ -680,6 +674,66 @@
     } finally {
       btn.disabled = false;
     }
+  }
+
+  // ---- reordering: drag an item by its grip ---------------------------------
+  // The row follows the finger through the list (the list scrolls near its
+  // edges); letting go writes the new order to ProPresenter. Rows in #items are
+  // one per playlist item, so a row's position is the item's new index.
+  let moving = false;
+  function dragItem(e, row, playlistId, it) {
+    if (moving || e.button > 0) return;
+    e.preventDefault();
+    const list = $("items"), pid = e.pointerId;
+    const from = [...list.children].indexOf(row);
+    let y = e.clientY;
+    moving = true;
+    row.classList.add("drag");
+    const place = () => {
+      let before = null;
+      for (const k of list.children) {
+        if (k === row) continue;
+        const r = k.getBoundingClientRect();
+        if (y < r.top + r.height / 2) { before = k; break; }
+      }
+      if (before !== row.nextElementSibling) list.insertBefore(row, before);
+    };
+    const scroller = setInterval(() => {   // near the top or bottom edge: scroll
+      const r = list.getBoundingClientRect(), edge = 60;
+      const d = y < r.top + edge ? -12 : y > r.bottom - edge ? 12 : 0;
+      if (d) { list.scrollTop += d; place(); }
+    }, 30);
+    // Listen on the document, not the grip: moving the row through the list
+    // would drop a pointer capture on it.
+    const onMove = ev => { if (ev.pointerId === pid) { y = ev.clientY; place(); } };
+    const onEnd = async ev => {
+      if (ev.pointerId !== pid) return;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onEnd);
+      document.removeEventListener("pointercancel", onEnd);
+      clearInterval(scroller);
+      row.classList.remove("drag");
+      const to = [...list.children].indexOf(row);
+      if (ev.type === "pointercancel" || to === from) {   // nothing to save
+        if (to !== from) await loadPlaylist();               // put the rows back
+        moving = false;
+        return;
+      }
+      plmsg(true, `Moving "${it.name}"…`);
+      let err = null;
+      try {
+        await api.moveInPlaylist(playlistId, from, to, it.name);
+        if (navigator.vibrate) navigator.vibrate(15);
+      } catch (x) {
+        err = x;
+      }
+      await loadPlaylist();
+      moving = false;
+      plmsg(!err, err ? err.message : `Moved "${it.name}".`);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onEnd);
+    document.addEventListener("pointercancel", onEnd);
   }
 
   // ---- editing: take an item out, add one from a library ------------------
@@ -810,9 +864,11 @@
   // the first tap only arms it; a second tap within ARM_MS runs it.
   const ARM_MS = 3000;
   // Only these macros are shown, in this order. Names are matched ignoring case,
-  // spaces and punctuation, so "Kid's Lyrics" also matches "kids lyrics".
-  const STAGE_MACROS = ["Speaking", "Speaking without translation", "Music and lyrics", "Kid's lyrics"];
-  const macroKey = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  // spaces and punctuation ("&" = "and"), so "Kid's Lyrics" also matches "KIDS
+  // LYRICS". A name with no exact match takes the first macro containing it, so
+  // "Welcome" finds "PRE-SERVICE - Welcome Splash".
+  const STAGE_MACROS = ["Speaking", "Welcome", "Music & Lyrics", "Youth Music", "Kid's Lyrics"];
+  const macroKey = s => String(s || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
   let macrosLoaded = false, armed = null, armTimer = 0;
 
   function macmsg(ok, msg) {
@@ -841,9 +897,11 @@
       const j = await api.macros();
       macrosLoaded = true;
       box.innerHTML = "";
-      const byKey = new Map();
-      j.macros.forEach(m => { if (!byKey.has(macroKey(m.name))) byKey.set(macroKey(m.name), m); });
-      const shown = STAGE_MACROS.map(n => byKey.get(macroKey(n))).filter(Boolean);
+      const find = n => {
+        const k = macroKey(n);
+        return j.macros.find(m => macroKey(m.name) === k) || j.macros.find(m => macroKey(m.name).includes(k));
+      };
+      const shown = STAGE_MACROS.map(find).filter(Boolean);
       if (!shown.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
@@ -864,7 +922,7 @@
         b.addEventListener("click", () => tapMacro(m, b));
         box.appendChild(b);
       });
-      const missing = STAGE_MACROS.filter(n => !byKey.has(macroKey(n)));
+      const missing = STAGE_MACROS.filter(n => !find(n));
       if (missing.length) macmsg(false, `Not in ProPresenter: ${missing.join(", ")}.`);
       else macmsg(true, "Tap a macro, then tap again to run it.");
     } catch (e) {
