@@ -38,18 +38,21 @@ app ships separately, through TestFlight with an `ios-v*` tag (see README).
    - writes `VERSION`, renames `[Unreleased]` to `[vX.Y.Z] — date` and opens a fresh empty `[Unreleased]`;
    - commits `Release vX.Y.Z`, adds an annotated tag `vX.Y.Z`, and pushes `main` and the tag.
 
-   **If pushing `main` or tags is refused** (some environments only allow pushes to
-   work branches), don't work around it:
-   - Run it without `--push`, then delete the local tag (`git tag -d vX.Y.Z`; it
-     was never pushed) and move the `Release vX.Y.Z` commit onto a branch such
-     as `claude/release-vX.Y.Z`.
+   **Cloud sessions can't push `main` or tags** (only work branches). There, use
+   the cloud route instead of `--push`. Don't try to work around the refusal.
+   - Run it without `--push`. Delete the local tag (`git tag -d vX.Y.Z`; it
+     was never pushed), and move the `Release vX.Y.Z` commit onto a branch
+     `claude/release-vX.Y.Z`.
    - Push that branch and open a PR into `main` titled `Release vX.Y.Z`.
-   - Once it's merged, the user publishes the release on GitHub: **Releases →
-     Draft a new release → Choose a tag: `vX.Y.Z`, create on publish, target
-     `main` → Publish release.** Publishing starts the same workflow, which
-     attaches the exe and replaces the notes with the CHANGELOG section.
+     The user merges it.
+   - Then start **Build Windows proxy** on `main` with the input
+     `release_version: X.Y.Z` (GitHub Actions "run workflow"; the GitHub tool's
+     `run_workflow` with `ref: main` and `inputs: {release_version: "X.Y.Z"}`).
+     The workflow checks that VERSION on `main` says X.Y.Z and that the tag
+     doesn't exist yet. It then builds and smoke-tests the exe, and creates
+     the tag and the Release itself.
 6. **Watch the build.**
-   - The tag starts *Build Windows proxy*: it builds the exe, smoke-tests it (it must start and serve the page), and publishes the GitHub Release `PP Remote vX.Y.Z` with `pp-remote-proxy.exe` attached and that version's CHANGELOG section as the notes.
+   - The tag (or the manual `release_version` run) starts *Build Windows proxy*: it builds the exe, smoke-tests it (it must start and serve the page), and publishes the GitHub Release `PP Remote vX.Y.Z` with `pp-remote-proxy.exe` attached and that version's CHANGELOG section as the notes.
    - Wait for the run to finish.
    - Confirm the Release exists and the asset is attached, then give the user the Release link.
    - If the build fails, fix it on `main` and cut the next patch version. Never move or re-push an existing tag.

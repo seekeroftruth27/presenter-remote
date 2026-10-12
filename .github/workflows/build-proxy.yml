@@ -2,9 +2,12 @@ name: Build Windows proxy
 
 # Builds pp-remote-proxy.exe: the browser version's proxy (proxy/pp_proxy.py)
 # with the page bundled in, as one Windows file that needs no Python. Download it
-# from the run's Artifacts. On a vX.Y.Z tag (made by the release skill,
-# scripts/release.py) it also publishes the GitHub Release for that tag, with
-# the exe attached and the version's CHANGELOG section as the notes.
+# from the run's Artifacts. It also publishes the GitHub Release vX.Y.Z (exe
+# attached, the version's CHANGELOG section as the notes) when:
+#   - a vX.Y.Z tag is pushed (scripts/release.py --push from your own machine),
+#   - a release is published on GitHub's website, or
+#   - it's run manually on main with release_version set (the cloud route: it
+#     creates the tag and the release itself; VERSION must already say it).
 on:
   push:
     branches: ["**"]
@@ -16,6 +19,11 @@ on:
   release:
     types: [published]   # a release published on GitHub's website (it creates the tag)
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Publish this version as a release (must equal VERSION on main, e.g. 1.0.0). Empty = test build only."
+        required: false
+        default: ""
 
 permissions:
   contents: write   # to attach the exe to a Release on a tag
@@ -44,18 +52,39 @@ jobs:
           Stop-Process -Id $p.Id
           if ($r.Content -notmatch "PP Remote") { throw "page not served" }
 
+      # Which release this run publishes, if any: a pushed vX.Y.Z tag, a release
+      # published on GitHub's website, or a manual run with release_version set
+      # (the cloud route: the workflow creates the tag and the Release itself).
+      - name: Decide the release
+        id: rel
+        shell: bash
+        env:
+          WANT: ${{ inputs.release_version }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$WANT" ]]; then
+            have=$(tr -d '\r\n ' < VERSION)
+            if [[ "$GITHUB_REF" != refs/heads/main ]]; then echo "::error::Releases are published from main."; exit 1; fi
+            if [[ "$WANT" != "$have" ]]; then echo "::error::release_version $WANT doesn't match VERSION ($have). Merge the 'Release v$WANT' PR first."; exit 1; fi
+            if git ls-remote --exit-code --tags origin "refs/tags/v$WANT" >/dev/null; then echo "::error::Tag v$WANT already exists; a release is fixed by a new version."; exit 1; fi
+            echo "tag=v$WANT" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: pp-remote-proxy-exe
           path: dist/pp-remote-proxy.exe
           if-no-files-found: error
 
-      - name: Release notes from CHANGELOG (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Release notes from CHANGELOG
+        if: steps.rel.outputs.tag != ''
         shell: python
+        env:
+          TAG: ${{ steps.rel.outputs.tag }}
         run: |
           import os, re
-          tag = os.environ["GITHUB_REF_NAME"]
+          tag = os.environ["TAG"]
           text = open("CHANGELOG.md", encoding="utf-8").read()
           m = re.search(r"^## \[" + re.escape(tag) + r"\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
           notes = m.group(1).strip() if m else f"PP Remote {tag}"
@@ -63,11 +92,13 @@ jobs:
           notes += "\n\n**Free to use.** If PP Remote helps your church, donations are welcome by **Zelle** to **giving@emanuel-church.com**. Thank you!"
           open("release-notes.md", "w", encoding="utf-8").write(notes + "\n")
 
-      - name: Publish the GitHub Release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish the GitHub Release
+        if: steps.rel.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          name: PP Remote ${{ github.ref_name }}
+          tag_name: ${{ steps.rel.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: PP Remote ${{ steps.rel.outputs.tag }}
           body_path: release-notes.md
           files: dist/pp-remote-proxy.exe
           overwrite_files: true   # a tag push and a website release may both fire
