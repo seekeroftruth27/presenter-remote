@@ -64,16 +64,18 @@
       return r;
     }
 
-    // A playlist as ProPresenter's PUT will take it: it reads headers out with an
-    // empty-string uuid but a write needs a real UUID or null (a GET'd playlist
-    // sent straight back was refused with HTTP 400), and empty optional fields are
-    // left out. 
+    // A playlist as ProPresenter's PUT will take it. Every field it read out goes
+    // back as it was, with two exceptions, both learned from its own 400 errors:
+    //   - an empty item id ("" -- headers have one) must be null, not "";
+    //   - target_uuid is required on every item ("missing field `target_uuid`"),
+    //     so an item that came without one gets "".
+    // Dropping empty fields altogether (an earlier attempt) is what lost
+    // target_uuid, so nothing else is removed.
     function putBody(items) {
       return JSON.parse(JSON.stringify(items)).map(it => {
         if (it.id && typeof it.id === "object" && !it.id.uuid) it.id.uuid = null;
-        const out = {};
-        for (const k in it) if (it[k] !== null && it[k] !== undefined && it[k] !== "") out[k] = it[k];
-        return out;
+        if (it.target_uuid === undefined || it.target_uuid === null) it.target_uuid = "";
+        return it;
       });
     }
 

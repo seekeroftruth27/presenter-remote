@@ -5,6 +5,12 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- **Adding from a library (and other playlist edits) was refused by
+  ProPresenter** with "missing field `target_uuid`": the playlist was written
+  back with empty fields left out, and ProPresenter requires that one on every
+  item. Every field now goes back as ProPresenter gave it.
+
 ## [v1.0.0] — 2026-10-12
 
 ### Added
