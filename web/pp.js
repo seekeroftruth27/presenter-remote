@@ -120,6 +120,16 @@
       return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
     }
 
+    // A song's arrangements, from GET /v1/presentation/{uuid}:
+    // {list: [{uuid, name}], current: uuid}. A song always has at least one;
+    // "no arrangement" is an arrangement with an empty name. A playlist entry
+    // must name one by uuid (ProPresenter answers 404 to an unknown one).
+    async function arrangementsOf(uuid) {
+      const p = ((await getJSON(`/v1/presentation/${enc(uuid)}`)) || {}).presentation || {};
+      const list = (p.arrangements || []).map(a => ident(a)).filter(a => a.uuid);
+      return { list, current: typeof p.current_arrangement === "string" ? p.current_arrangement : "" };
+    }
+
     function itemPresentation(it) {
       return (it.presentation_info || {}).presentation_uuid || it.target_uuid || "";
     }
@@ -292,12 +302,28 @@
       async setArrangement(id, index, expectedName, arrangement) {
         arrangement = (arrangement || "").trim().slice(0, 200);
         let pres = "";
+        // ProPresenter goes by arrangement_uuid, so find the arrangement with
+        // this name in the song ("" = its unnamed one). If the song can't be
+        // read, only the name is changed, as before.
+        const peek = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
+        checkItem(peek, index, expectedName);
+        let arrUuid = null;
+        try {
+          const arrs = await arrangementsOf(itemPresentation(peek[index]));
+          const hit = arrs.list.find(a => a.name.trim().toLowerCase() === arrangement.toLowerCase());
+          if (hit) arrUuid = hit.uuid;
+          else if (arrangement && arrs.list.length)
+            throw new Error(`"${expectedName}" has no arrangement called "${arrangement}" in ProPresenter.`);
+        } catch (e) {
+          if (/has no arrangement called/.test(e.message)) throw e;
+        }
         const res = await this.editPlaylist(id, items => {
           checkItem(items, index, expectedName);
           if (items[index].type !== "presentation") throw new Error("Only songs/presentations have arrangements");
           const info = Object.assign({}, items[index].presentation_info || {});
           if (!info.presentation_uuid) info.presentation_uuid = itemPresentation(items[index]);
           info.arrangement_name = arrangement;   // "" = no arrangement (the field must stay)
+          if (arrUuid) info.arrangement_uuid = arrUuid;
           items[index].presentation_info = info;
           const n = items.length;
           pres = itemPresentation(items[index]);
@@ -319,31 +345,23 @@
       //    target_uuid, destination}
       // id.uuid is the entry's own id (not the song's). ProPresenter requires one
       // (null is refused: "expected a string"), so a new one is made here.
-      // A new entry has no arrangement id, and it isn't known whether ProPresenter
-      // wants that field left out, null or "" (it answered 404 to ""), so each is
-      // tried in turn. A refused write changes nothing, so retrying is safe.
+      // arrangement_uuid must be one of the song's own arrangements (left out,
+      // null and "" are all refused), so the song's current one is read first.
       async addToPlaylist(id, uuid, name) {
         if (!uuid) throw new Error("missing presentation");
         name = (name || "").trim().slice(0, 200);
-        const NO_ARRANGEMENT = [undefined, null, ""];   // undefined = leave the field out
-        let last;
-        for (const arr of NO_ARRANGEMENT) {
-          try {
-            return await this.editPlaylist(id, items => {
-              const n = items.length;
-              const info = { presentation_uuid: uuid, arrangement_name: "" };
-              if (arr !== undefined) info.arrangement_uuid = arr;
-              items.push({ id: { uuid: newUuid(), name, index: n }, type: "presentation",
-                           is_hidden: false, is_pco: false, presentation_info: info,
-                           target_uuid: uuid, destination: "presentation" });
-              return after => after.length === n + 1 && itemPresentation(after[n]) === uuid;
-            });
-          } catch (e) {
-            last = e;
-            if (!e.refused) throw e;   // not a refusal: something may have changed, stop
-          }
-        }
-        throw last;
+        const arrs = await arrangementsOf(uuid);
+        const arr = arrs.list.find(a => a.uuid === arrs.current) || arrs.list[0];
+        if (!arr) throw new Error(`ProPresenter didn't list any arrangement for "${name}", so it can't be added from here.`);
+        return this.editPlaylist(id, items => {
+          const n = items.length;
+          items.push({ id: { uuid: newUuid(), name, index: n }, type: "presentation",
+                       is_hidden: false, is_pco: false,
+                       presentation_info: { presentation_uuid: uuid, arrangement_name: arr.name,
+                                            arrangement_uuid: arr.uuid },
+                       target_uuid: uuid, destination: "presentation" });
+          return after => after.length === n + 1 && itemPresentation(after[n]) === uuid;
+        });
       },
 
       async removeFromPlaylist(id, index, expectedName) {

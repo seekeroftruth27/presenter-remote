@@ -38,15 +38,19 @@ Learned from real 4xx answers, so trust these over the published docs:
   - `target_uuid` is required on every item, headers included (GET omits it on headers; send
     `""` there). On a presentation it's the presentation's uuid.
   - `presentation_info.arrangement_name` is required (`""` = no arrangement).
-  - `arrangement_uuid`: real entries always have one, even with an empty name. What a new
-    entry should send is **unconfirmed**. `addToPlaylist` tries the field left out, then
-    `null`, then `""`.
+  - `arrangement_uuid` is required and must be one of the song's own arrangements: left
+    out → 400 missing field, `null` → 400, `""` → 404. "No arrangement" is still an arrangement
+    (one with an empty name).
+- **Song arrangements** come from `GET /v1/presentation/{uuid}`: `arrangements: [{id:{uuid,
+  name}}]` and `current_arrangement` (a uuid). `addToPlaylist` uses the current one;
+  `setArrangement` sets both the name and the matching `arrangement_uuid`.
 - **`destination`** is `"presentation"` or `"announcements"`. New songs use `"presentation"`.
 - **Response shapes vary.** Libraries, macros and collections arrive either flat
   `{uuid,name}` or wrapped `{id:{...}}`; `ident()` takes both.
 - **Playlist list.** `/v1/playlists` nodes have `field_type` (`playlist` / `group`) and
   `children`.
-- **Macros tab.** Shows ProPresenter's "Default" macro collection (`/v1/macro_collections`).
+- **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
+  from `/v1/macro_collections`.
 
 ## Diagnosing a refusal
 When ProPresenter refuses a write, the proxy appends what it sent and what came back to

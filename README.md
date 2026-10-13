@@ -13,7 +13,7 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - **Add** presentations from a library (with search).
   - Items under an **Announcements** header are greyed out and can't be played, moved or removed from here.
 - **Macros tab:**
-  - The macros in ProPresenter's **Default** macro collection, in that
+  - The macros in ProPresenter's **Default Collection** macro collection, in that
     collection's order, as buttons in their own colours. Change what the stage
     team sees by editing that collection in ProPresenter. The collection's name
     is `MACRO_COLLECTION` in `web/index.html`.
