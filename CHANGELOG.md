@@ -5,6 +5,12 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- **Playlist changes were refused ("HTTP 404")**: adding, removing, reordering
+  and changing arrangements. When saving a playlist, ProPresenter expects each
+  song entry to carry the song's id where its own reading gives the entry's
+  id; the app now sends it that way.
+
 ## [v1.1.4] — 2026-10-13
 
 ### Added

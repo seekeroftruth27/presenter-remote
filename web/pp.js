@@ -61,16 +61,22 @@
     }
 
     // A playlist as ProPresenter's PUT will take it. Every field it read out goes
-    // back as it was; the exceptions are what its own 400 errors have asked for:
-    //   - an empty item id ("" -- headers have one) must be null, not "";
+    // back as it was, except where its own errors have asked otherwise:
+    //   - on a song (presentation) entry, id.uuid must be the SONG's uuid, not
+    //     the entry's: GET gives the entry's own id there (the song's is in
+    //     target_uuid), but PUT looks the song up by id.uuid and answers 404 to
+    //     an entry id. ProPresenter makes fresh entry ids after the PUT.
     //   - target_uuid is required on every item ("missing field `target_uuid`");
     //   - presentation_info needs arrangement_name ("missing field
     //     `arrangement_name`"), "" meaning no arrangement.
     // Nothing is ever dropped: leaving out empty fields is what lost them.
     function putBody(items) {
       return JSON.parse(JSON.stringify(items)).map(it => {
-        if (it.id && typeof it.id === "object" && !it.id.uuid) it.id.uuid = null;
         if (it.target_uuid === undefined || it.target_uuid === null) it.target_uuid = "";
+        if (it.type === "presentation" && it.id && typeof it.id === "object") {
+          const song = itemPresentation(it);
+          if (song) it.id.uuid = song;
+        }
         const info = it.presentation_info;
         if (info && typeof info === "object" && (info.arrangement_name === undefined || info.arrangement_name === null))
           info.arrangement_name = "";
@@ -107,17 +113,6 @@
     function checkItem(items, index, expectedName) {
       if (!(index >= 0 && index < items.length) || ((items[index].id || {}).name) !== expectedName)
         throw new Error("The playlist changed in ProPresenter. Reload and try again.");
-    }
-
-    // A new random (v4) UUID. crypto.randomUUID needs a secure (https) page,
-    // which the proxy's http page isn't; getRandomValues works on any page.
-    function newUuid() {
-      if (crypto.randomUUID && window.isSecureContext) return crypto.randomUUID();
-      const b = crypto.getRandomValues(new Uint8Array(16));
-      b[6] = (b[6] & 0x0f) | 0x40;
-      b[8] = (b[8] & 0x3f) | 0x80;
-      const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
-      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
     }
 
     // A song's arrangements, from GET /v1/presentation/{uuid}:
@@ -343,8 +338,7 @@
       //   {id:{uuid,name,index}, type:"presentation", is_hidden, is_pco,
       //    presentation_info:{presentation_uuid, arrangement_name, arrangement_uuid},
       //    target_uuid, destination}
-      // id.uuid is the entry's own id (not the song's). ProPresenter requires one
-      // (null is refused: "expected a string"), so a new one is made here.
+      // On a PUT, id.uuid is the song's uuid (see putBody).
       // arrangement_uuid must be one of the song's own arrangements (left out,
       // null and "" are all refused), so the song's current one is read first.
       async addToPlaylist(id, uuid, name) {
@@ -355,7 +349,7 @@
         if (!arr) throw new Error(`ProPresenter didn't list any arrangement for "${name}", so it can't be added from here.`);
         return this.editPlaylist(id, items => {
           const n = items.length;
-          items.push({ id: { uuid: newUuid(), name, index: n }, type: "presentation",
+          items.push({ id: { uuid, name, index: n }, type: "presentation",
                        is_hidden: false, is_pco: false,
                        presentation_info: { presentation_uuid: uuid, arrangement_name: arr.name,
                                             arrangement_uuid: arr.uuid },
