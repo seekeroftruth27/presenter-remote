@@ -7,12 +7,9 @@
 //     sends no CORS headers and a browser would block the calls otherwise.
 
 (() => {
-  const PLAYLIST_SCAN_MAX = 150;   // cap on playlists read when gathering suggestions
-  // The scan is a burst of requests to ProPresenter, which may be busy running the
-  // service on the same PC: run it at most this often (or on the reload button), two
-  // requests at a time, and reuse it in between.
-  const SUGGEST_TTL_MS = 10 * 60 * 1000;
-  const SCAN_PARALLEL = 2;
+  // A song's details (arrangements, slides) are read once and reused this long:
+  // ProPresenter may be busy running the service on the same PC.
+  const SONG_TTL_MS = 10 * 60 * 1000;
   const ACTIONS = {
     "next": ["/v1/trigger/next"],
     "previous": ["/v1/trigger/previous"],
@@ -115,14 +112,39 @@
         throw new Error("The playlist changed in ProPresenter. Reload and try again.");
     }
 
-    // A song's arrangements, from GET /v1/presentation/{uuid}:
-    // {list: [{uuid, name}], current: uuid}. A song always has at least one;
-    // "no arrangement" is an arrangement with an empty name. A playlist entry
-    // must name one by uuid (ProPresenter answers 404 to an unknown one).
-    async function arrangementsOf(uuid) {
+    // A song, from GET /v1/presentation/{uuid}, cached for SONG_TTL_MS:
+    //   slides: [{text, group, color}] in master order (index = thumbnail index)
+    //   arrangements: [{uuid, name, order}], order = slide indexes in play order.
+    //     "No arrangement" (the MASTER) is an arrangement with an empty name.
+    //   current: uuid of the song's current arrangement.
+    // A playlist entry must name one of these by uuid (ProPresenter answers 404
+    // to anything else).
+    const songCache = new Map();
+    async function song(uuid, fresh) {
+      const hit = songCache.get(uuid);
+      if (!fresh && hit && Date.now() - hit.at < SONG_TTL_MS) return hit.data;
       const p = ((await getJSON(`/v1/presentation/${enc(uuid)}`)) || {}).presentation || {};
-      const list = (p.arrangements || []).map(a => ident(a)).filter(a => a.uuid);
-      return { list, current: typeof p.current_arrangement === "string" ? p.current_arrangement : "" };
+      const slides = [], byGroup = {};
+      for (const g of p.groups || []) {
+        const idx = [];
+        for (const sl of g.slides || []) {
+          idx.push(slides.length);
+          slides.push({ text: (sl && sl.text) || "", group: g.name || "", color: color(g.color) });
+        }
+        if (g.uuid) byGroup[g.uuid] = idx;
+      }
+      const master = slides.map((_, i) => i);
+      const groupId = g => typeof g === "string" ? g : (g && (g.uuid || (g.id && g.id.uuid))) || "";
+      const arrangements = (p.arrangements || []).map(a => {
+        const { uuid: id, name } = ident(a);
+        const groups = (a && a.groups) || [];
+        const order = groups.length ? groups.flatMap(g => byGroup[groupId(g)] || []) : master;
+        return { uuid: id, name: name.trim(), order: order.length ? order : master };
+      }).filter(a => a.uuid);
+      const data = { uuid, slides, arrangements,
+                     current: typeof p.current_arrangement === "string" ? p.current_arrangement : "" };
+      songCache.set(uuid, { at: Date.now(), data });
+      return data;
     }
 
     function itemPresentation(it) {
@@ -134,42 +156,12 @@
       (function walk(nodes, prefix) {
         for (const n of nodes || []) {
           const id = n.id || {};
-          if (n.type === "group") walk(n.playlists, `${prefix}${id.name || ""} / `);
+          const kind = n.field_type || n.type;
+          if (kind === "group") walk(n.children || n.playlists, `${prefix}${id.name || ""} / `);
           else if (id.uuid) out.push({ uuid: id.uuid, name: prefix + (id.name || "") });
         }
       })(await getJSON("/v1/playlists"), "");
       return out;
-    }
-
-    async function suggestions(playlists) {
-      const seen = {};
-      const todo = playlists.slice(0, PLAYLIST_SCAN_MAX), lists = [];
-      async function worker() {   // a few at a time, so ProPresenter isn't flooded
-        while (todo.length) {
-          const pl = todo.shift();
-          lists.push(await getJSON(`/v1/playlist/${enc(pl.uuid)}`).then(j => (j && j.items) || [], () => []));
-        }
-      }
-      await Promise.all(Array.from({ length: SCAN_PARALLEL }, worker));
-      for (const items of lists) {
-        for (const it of items) {
-          const name = ((it.presentation_info || {}).arrangement_name || "").trim();
-          const pres = itemPresentation(it);
-          if (name && pres) (seen[pres] = seen[pres] || new Set()).add(name);
-        }
-      }
-      const out = {};
-      for (const k in seen) out[k] = [...seen[k]].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-      return out;
-    }
-
-    let suggestCache = null, suggestAt = 0;
-    async function cachedSuggestions(fresh) {
-      if (fresh || !suggestCache || Date.now() - suggestAt > SUGGEST_TTL_MS) {
-        suggestCache = await suggestions(await playlistList());
-        suggestAt = Date.now();
-      }
-      return suggestCache;
     }
 
     return {
@@ -233,19 +225,22 @@
         return { ok: true, playlists: await playlistList() };
       },
 
-      async playlist(id, fresh) {
+      async playlist(id) {
         const pl = (await getJSON(`/v1/playlist/${enc(id)}`)) || {};
-        const sugg = await cachedSuggestions(fresh);
         const items = (pl.items || []).map((it, i) => ({
           index: i,
           name: (it.id || {}).name || "",
           type: it.type || "",
           is_pco: !!it.is_pco,
+          song: it.type === "presentation" ? itemPresentation(it) : "",
           arrangement: (it.presentation_info || {}).arrangement_name || "",
-          choices: it.type === "presentation" ? (sugg[itemPresentation(it)] || []) : [],
+          arrangementUuid: (it.presentation_info || {}).arrangement_uuid || "",
         }));
         return { ok: true, name: (pl.id || {}).name || "", items };
       },
+
+      // A song's slides and arrangements (see song()); fresh = don't reuse.
+      song(uuid, fresh) { return song(uuid, fresh); },
 
       // Put a playlist on screen: its first item, or (index given) that item,
       // only if the playlist still has `expectedName` there.
@@ -294,43 +289,27 @@
         throw new Error("ProPresenter didn't take the change; the playlist was put back as it was.");
       },
 
-      async setArrangement(id, index, expectedName, arrangement) {
-        arrangement = (arrangement || "").trim().slice(0, 200);
-        let pres = "";
-        // ProPresenter goes by arrangement_uuid, so find the arrangement with
-        // this name in the song ("" = its unnamed one). If the song can't be
-        // read, only the name is changed, as before.
+      // Set an entry's arrangement to one of its song's own (by uuid; the MASTER
+      // is the one with an empty name). ProPresenter goes by arrangement_uuid;
+      // arrangement_name is kept in step with it.
+      async setArrangement(id, index, expectedName, arrangementUuid) {
         const peek = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
         checkItem(peek, index, expectedName);
-        let arrUuid = null;
-        try {
-          const arrs = await arrangementsOf(itemPresentation(peek[index]));
-          const hit = arrs.list.find(a => a.name.trim().toLowerCase() === arrangement.toLowerCase());
-          if (hit) arrUuid = hit.uuid;
-          else if (arrangement && arrs.list.length)
-            throw new Error(`"${expectedName}" has no arrangement called "${arrangement}" in ProPresenter.`);
-        } catch (e) {
-          if (/has no arrangement called/.test(e.message)) throw e;
-        }
-        const res = await this.editPlaylist(id, items => {
+        if (peek[index].type !== "presentation") throw new Error("Only songs/presentations have arrangements");
+        const s = await song(itemPresentation(peek[index]), true);
+        const arr = s.arrangements.find(a => a.uuid === arrangementUuid);
+        if (!arr) throw new Error(`That arrangement isn't in "${expectedName}" any more. Reload and try again.`);
+        return this.editPlaylist(id, items => {
           checkItem(items, index, expectedName);
-          if (items[index].type !== "presentation") throw new Error("Only songs/presentations have arrangements");
           const info = Object.assign({}, items[index].presentation_info || {});
           if (!info.presentation_uuid) info.presentation_uuid = itemPresentation(items[index]);
-          info.arrangement_name = arrangement;   // "" = no arrangement (the field must stay)
-          if (arrUuid) info.arrangement_uuid = arrUuid;
+          info.arrangement_name = arr.name;
+          info.arrangement_uuid = arr.uuid;
           items[index].presentation_info = info;
           const n = items.length;
-          pres = itemPresentation(items[index]);
           return after => after.length === n &&
-            (((after[index] || {}).presentation_info || {}).arrangement_name || "") === arrangement;
+            ((after[index] || {}).presentation_info || {}).arrangement_uuid === arr.uuid;
         });
-        if (suggestCache && pres && arrangement) {   // offer the new name straight away
-          const names = new Set(suggestCache[pres] || []);
-          names.add(arrangement);
-          suggestCache[pres] = [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-        }
-        return res;
       },
 
       // Add a library presentation to the end of a playlist, shaped like the
@@ -344,8 +323,8 @@
       async addToPlaylist(id, uuid, name) {
         if (!uuid) throw new Error("missing presentation");
         name = (name || "").trim().slice(0, 200);
-        const arrs = await arrangementsOf(uuid);
-        const arr = arrs.list.find(a => a.uuid === arrs.current) || arrs.list[0];
+        const s = await song(uuid);
+        const arr = s.arrangements.find(a => a.uuid === s.current) || s.arrangements[0];
         if (!arr) throw new Error(`ProPresenter didn't list any arrangement for "${name}", so it can't be added from here.`);
         return this.editPlaylist(id, items => {
           const n = items.length;

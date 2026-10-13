@@ -48,12 +48,19 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **Entry ids change after every save**, so match entries by name/position, never by id.
 - **Song arrangements** come from `GET /v1/presentation/{uuid}`: `arrangements: [{id:{uuid,
   name}}]` and `current_arrangement` (a uuid). `addToPlaylist` uses the current one;
-  `setArrangement` sets both the name and the matching `arrangement_uuid`.
+  `setArrangement` sets both the name and the matching `arrangement_uuid`. The unnamed
+  arrangement is shown as **MASTER**. `song()` in pp.js reads the page once (cached 10 min)
+  and gives slides in master order (= thumbnail index) and each arrangement's slide order.
+  How a *named* arrangement lists its `groups` is unconfirmed: `song()` accepts group uuid
+  strings or `{uuid}` / `{id:{uuid}}` objects, and falls back to master order.
 - **`destination`** is `"presentation"` or `"announcements"`. New songs use `"presentation"`.
 - **Response shapes vary.** Libraries, macros and collections arrive either flat
   `{uuid,name}` or wrapped `{id:{...}}`; `ident()` takes both.
 - **Playlist list.** `/v1/playlists` nodes have `field_type` (`playlist` / `group`) and
-  `children`.
+  `children` (older docs say `type` / `playlists`; `playlistList` takes both).
+- **Hidden section.** Items under an "Announcements" header aren't rendered. Rows carry
+  `data-index` (the item's index in the whole playlist), and drag computes the target index
+  from the next shown row, so hidden items keep their place.
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
   from `/v1/macro_collections`.
 

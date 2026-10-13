@@ -140,15 +140,30 @@
            -webkit-overflow-scrolling:touch; }
   .hdr { font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:#888;
          margin:8px 2px 0; }
-  /* One playlist item per row: grip, name, arrangement, play, remove. On a phone
-     the arrangement drops to a second line. */
-  .song { background:#1c1c1c; border-radius:12px; padding:8px 10px; display:grid; gap:6px 10px;
-          align-items:center; grid-template-areas:"grip nm arr play rm";
-          grid-template-columns:44px minmax(0, 1fr) minmax(0, 300px) 68px 68px; }
+  /* One playlist item per row: grip, preview toggle, name, arrangement, play,
+     remove; the slide preview opens underneath. On a phone the arrangement drops
+     to a second line. */
+  .song { background:#1c1c1c; border-radius:12px; padding:8px 10px; display:grid; gap:6px 8px;
+          align-items:center; grid-template-areas:"grip tog nm arr play rm" "pv pv pv pv pv pv";
+          grid-template-columns:40px 40px minmax(0, 1fr) minmax(0, 300px) 68px 68px; }
   @media (max-width:600px) {
-    .song { grid-template-areas:"grip nm play rm" "grip arr arr arr";
-            grid-template-columns:36px minmax(0, 1fr) 60px 60px; }
+    .song { grid-template-areas:"grip tog nm play rm" ". . arr arr arr" "pv pv pv pv pv";
+            grid-template-columns:30px 34px minmax(0, 1fr) 56px 56px; }
   }
+  .tog { grid-area:tog; background:transparent; color:#aaa; padding:0; min-height:44px;
+         display:flex; align-items:center; justify-content:center; }
+  .tog svg { width:24px; height:24px; transition:transform .15s; }
+  .tog.open svg { transform:rotate(180deg); }
+  /* Slide preview: view only (tapping does nothing), four to a row. */
+  .pv { grid-area:pv; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px;
+        padding-top:4px; }
+  .pv[hidden] { display:none; }
+  .pv .t { aspect-ratio:16 / 9; background:#000 center / contain no-repeat; border-radius:4px;
+           border-left:3px solid var(--gc, #333); display:flex; align-items:center;
+           justify-content:center; padding:2px; font-size:9px; line-height:1.2; color:#ccc;
+           text-align:center; white-space:pre-wrap; overflow:hidden; }
+  .pv .t.pic { color:transparent; }
+  .pv .note { grid-column:1 / -1; color:#888; font-size:14px; }
   .song .nm { grid-area:nm; font-weight:600; font-size:20px; min-width:0; overflow-wrap:anywhere; }
   .song select, .song .other { grid-area:arr; }
   .song select { font-size:17px; }
@@ -159,7 +174,6 @@
                display:flex; align-items:center; justify-content:center; }
   .play { grid-area:play; background:#166534; }
   .rm { grid-area:rm; background:#3a2323; }
-  .song.ro { opacity:.4; }
   .song.drag { outline:2px solid #f59e0b; background:#262626; }
   .wide { background:#333; font-size:16px; padding:14px; flex:none; }
   #pladd { background:#166534; font-size:21px; padding:20px; }
@@ -252,7 +266,6 @@
 (() => {
   const $ = id => document.getElementById(id);
   const state = $("state");
-  const OTHER = "\u0000other", NONE = "";
 
   function show(ok, msg) {
     state.textContent = msg;
@@ -537,7 +550,7 @@
     }
   }
 
-  let freshNext = false;
+  let freshNext = false;   // ↻: read songs afresh instead of reusing them
   async function loadPlaylist() {
     const id = $("plsel").value, list = $("items");
     list.innerHTML = "";
@@ -547,7 +560,8 @@
     store.set("pp-playlist", id);
     plmsg(true, "Loading…");
     try {
-      const j = await api.playlist(id, freshNext);
+      const j = await api.playlist(id);
+      const fresh = freshNext;
       freshNext = false;
       if (j.items.some(it => it.is_pco)) {
         plmsg(true, "Linked to Planning Center: arrangements are set there.");
@@ -555,12 +569,14 @@
         plmsg(true, j.items.some(it => it.type === "presentation") ? "" : "No songs in this playlist.");
       }
       const pco = j.items.some(x => x.is_pco);
-      // Items under an "Announcements" header (up to the next header) are shown
-      // greyed out and can't be played, moved or removed from here.
-      let section = "";
+      // A section under an "Announcements" header (up to the next header) isn't
+      // the stage team's, so it isn't shown at all. Rows keep their item's index
+      // in the whole playlist (data-index), so edits still land in the right place.
+      list.dataset.count = j.items.length;
+      let hide = false;
       j.items.forEach(it => {
-        if (it.type === "header") section = it.name;
-        list.appendChild(renderItem(id, it, pco, READ_ONLY_SECTION.test(section)));
+        if (it.type === "header") hide = HIDDEN_SECTION.test(it.name);
+        if (!hide) list.appendChild(renderItem(id, it, pco, fresh));
       });
       plEditable = !pco;
       syncAddButton();
@@ -569,24 +585,66 @@
     }
   }
 
-  const READ_ONLY_SECTION = /announcement/i;
+  const HIDDEN_SECTION = /announcement/i;
   const ICON_GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
   const ICON_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+  const ICON_DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  const MASTER = "MASTER";   // how the song's unnamed arrangement (slides in order) is shown
 
-  function renderItem(playlistId, it, isPco, readOnly) {
+  // Songs are read two at a time, so opening a long playlist doesn't flood
+  // ProPresenter (pp.js keeps each one for a while).
+  const songQ = [];
+  let songBusy = 0;
+  function loadSong(uuid, fresh) {
+    return new Promise((res, rej) => { songQ.push({ uuid, fresh, res, rej }); pumpSongs(); });
+  }
+  function pumpSongs() {
+    while (songBusy < 2 && songQ.length) {
+      const job = songQ.shift();
+      songBusy++;
+      api.song(job.uuid, job.fresh).then(job.res, job.rej)
+        .finally(() => { songBusy--; pumpSongs(); });
+    }
+  }
+
+  // Preview thumbnails, also two at a time; skipped if their row has gone.
+  const thumbQ = [];
+  let thumbBusy = 0;
+  function queueThumb(el, uuid, i) { thumbQ.push([el, uuid, i]); pumpThumbs(); }
+  function pumpThumbs() {
+    while (thumbBusy < 2 && thumbQ.length) {
+      const [el, uuid, i] = thumbQ.shift();
+      if (!el.isConnected) continue;
+      thumbBusy++;
+      const pic = new Image();
+      const done = () => { thumbBusy--; pumpThumbs(); };
+      pic.onload = () => { el.style.backgroundImage = `url("${pic.src}")`; el.classList.add("pic"); done(); };
+      pic.onerror = () => {
+        if (api.thumbBlobUrl && !pic.dataset.retried) {
+          pic.dataset.retried = "1";
+          api.thumbBlobUrl(uuid, i).then(u => { pic.src = u; }, done);
+        } else done();
+      };
+      pic.src = api.thumbUrl(uuid, i);
+    }
+  }
+
+  function renderItem(playlistId, it, isPco, fresh) {
     if (it.type === "header") {
       const h = document.createElement("div");
       h.className = "hdr";
       h.textContent = it.name;
+      h.dataset.index = it.index;
       return h;
     }
     const row = document.createElement("div");
-    row.className = "song" + (readOnly ? " ro" : "");
+    row.className = "song";
+    row.dataset.index = it.index;
     const nm = document.createElement("div");
     nm.className = "nm";
     nm.textContent = it.name;
     row.appendChild(nm);
-    if (!isPco && !readOnly) {
+    if (!isPco) {
       const grip = document.createElement("div");
       grip.className = "grip";
       grip.innerHTML = ICON_GRIP;
@@ -598,7 +656,6 @@
     play.className = "play";
     play.textContent = "▶";
     play.setAttribute("aria-label", `Show ${it.name}`);
-    play.disabled = readOnly;
     play.addEventListener("click", () => trigger(playlistId, it, play));
     row.appendChild(play);
     if (!isPco) {
@@ -606,7 +663,6 @@
       rm.className = "rm";
       rm.innerHTML = ICON_TRASH;
       rm.setAttribute("aria-label", `Remove ${it.name}`);
-      rm.disabled = readOnly;
       rm.addEventListener("click", () => removeItem(playlistId, it, rm));
       row.appendChild(rm);
     }
@@ -618,50 +674,98 @@
       row.appendChild(t);
       return row;
     }
+
+    // Arrangement: the song's own list (MASTER first), read from ProPresenter.
+    // Until it arrives, the entry's current one is shown and can't be changed.
     const sel = document.createElement("select");
     sel.setAttribute("aria-label", `Arrangement for ${it.name}`);
-    fillChoices(sel, it.choices, it.arrangement);
-    const locked = isPco || readOnly;
-    sel.disabled = locked;
-    let current = it.arrangement;
-    sel.addEventListener("change", async () => {
-      let pick = sel.value;
-      if (pick === OTHER) {
-        const typed = prompt(`Arrangement name for "${it.name}" (exactly as in ProPresenter):`, "");
-        if (typed === null || !typed.trim()) { sel.value = current; return; }
-        pick = typed.trim();
+    sel.add(new Option(it.arrangement || MASTER, it.arrangementUuid));
+    sel.disabled = true;
+    row.appendChild(sel);
+    let current = it.arrangementUuid, songData = null, songErr = null;
+
+    // ⌄ shows the slides in the chosen arrangement's order. View only.
+    const tog = document.createElement("button");
+    tog.className = "tog";
+    tog.innerHTML = ICON_DOWN;
+    tog.setAttribute("aria-label", `Show the slides of ${it.name}`);
+    const pv = document.createElement("div");
+    pv.className = "pv";
+    pv.hidden = true;
+    row.append(tog, pv);
+    const drawPreview = () => {
+      pv.innerHTML = "";
+      if (!songData) {
+        const note = document.createElement("div");
+        note.className = "note";
+        note.textContent = songErr ? `Couldn't read this song: ${songErr.message}` : "Loading slides…";
+        pv.appendChild(note);
+        return;
       }
-      if (pick === current) { sel.value = current; return; }
+      const arr = songData.arrangements.find(a => a.uuid === current);
+      const order = arr ? arr.order : songData.slides.map((_, i) => i);
+      if (!order.length) {
+        pv.innerHTML = '<div class="note">No slides.</div>';
+        return;
+      }
+      for (const i of order) {
+        const s = songData.slides[i] || {};
+        const t = document.createElement("div");
+        t.className = "t";
+        t.textContent = s.text || s.group || "";
+        if (s.color) t.style.setProperty("--gc", s.color);
+        pv.appendChild(t);
+        queueThumb(t, songData.uuid, i);
+      }
+    };
+    tog.addEventListener("click", () => {
+      pv.hidden = !pv.hidden;
+      tog.classList.toggle("open", !pv.hidden);
+      if (!pv.hidden) drawPreview(); else pv.innerHTML = "";
+    });
+
+    loadSong(it.song, fresh).then(s => {
+      songData = s;
+      if (!s.arrangements.length) return;   // nothing to choose from
+      sel.innerHTML = "";
+      const master = s.arrangements.find(a => !a.name);
+      if (master) sel.add(new Option(MASTER, master.uuid));
+      s.arrangements.filter(a => a.name).forEach(a => sel.add(new Option(a.name, a.uuid)));
+      const known = s.arrangements.some(a => a.uuid === current);
+      if (!known) {   // the entry names one the song doesn't list: go by name
+        const byName = s.arrangements.find(a => a.name === it.arrangement);
+        current = byName ? byName.uuid : (master || s.arrangements[0]).uuid;
+      }
+      sel.value = current;
+      sel.disabled = isPco;
+      if (!pv.hidden) drawPreview();
+    }, e => {
+      songErr = e;
+      if (!pv.hidden) drawPreview();
+    });
+
+    sel.addEventListener("change", async () => {
+      const pick = sel.value;
+      if (pick === current) return;
+      const label = sel.options[sel.selectedIndex].text;
       row.classList.add("busy");
       sel.disabled = true;
-      plmsg(true, `Setting "${it.name}" to ${pick || "no arrangement"}…`);
+      plmsg(true, `Setting "${it.name}" to ${label}…`);
       try {
         await api.setArrangement(playlistId, it.index, it.name, pick);
         current = pick;
-        if (pick && !it.choices.includes(pick)) it.choices.push(pick);
-        fillChoices(sel, it.choices, current);
-        plmsg(true, `"${it.name}" now uses ${current || "no arrangement"}.`);
+        plmsg(true, `"${it.name}" now uses ${label}.`);
         if (navigator.vibrate) navigator.vibrate(15);
+        if (!pv.hidden) drawPreview();
       } catch (e) {
-        fillChoices(sel, it.choices, current);
+        sel.value = current;
         plmsg(false, e.message);
       } finally {
         row.classList.remove("busy");
-        sel.disabled = locked;
+        sel.disabled = isPco;
       }
     });
-    row.appendChild(sel);
     return row;
-  }
-
-  function fillChoices(sel, choices, current) {
-    sel.innerHTML = "";
-    const names = choices.slice();
-    if (current && !names.includes(current)) names.unshift(current);
-    sel.add(new Option("No arrangement (slides in order)", NONE));
-    names.forEach(n => sel.add(new Option(n, n)));
-    sel.add(new Option("Other…", OTHER));
-    sel.value = current || NONE;
   }
 
   // ---- putting one playlist item on screen ---------------------------------
@@ -690,7 +794,7 @@
     if (moving || e.button > 0) return;
     e.preventDefault();
     const list = $("items"), pid = e.pointerId;
-    const from = [...list.children].indexOf(row);
+    const from = it.index, startNext = row.nextElementSibling;
     let y = e.clientY;
     moving = true;
     row.classList.add("drag");
@@ -718,9 +822,13 @@
       document.removeEventListener("pointercancel", onEnd);
       clearInterval(scroller);
       row.classList.remove("drag");
-      const to = [...list.children].indexOf(row);
+      // Where it landed, as an index in the whole playlist (some sections aren't
+      // shown): just before the next row's item, or at the very end.
+      const next = row.nextElementSibling;
+      let to = next ? Number(next.dataset.index) : Number(list.dataset.count) - 1;
+      if (next && from < to) to -= 1;
       if (ev.type === "pointercancel" || to === from) {   // nothing to save
-        if (to !== from) await loadPlaylist();               // put the rows back
+        if (row.nextElementSibling !== startNext) await loadPlaylist();   // put the rows back
         moving = false;
         return;
       }
@@ -861,7 +969,7 @@
   $("libq").addEventListener("input", renderLibrary);
 
   $("plsel").addEventListener("change", () => { closeAdder(); loadPlaylist(); });
-  // ↻ also re-reads every playlist for arrangement names (normally reused for 10 min).
+  // ↻ also re-reads the songs' arrangements and slides (normally reused for 10 min).
   $("plreload").addEventListener("click", () => { playlistsLoaded = false; freshNext = true; loadPlaylists(); });
 
   // ---- macros ------------------------------------------------------------
