@@ -109,6 +109,17 @@
         throw new Error("The playlist changed in ProPresenter. Reload and try again.");
     }
 
+    // A new random (v4) UUID. crypto.randomUUID needs a secure (https) page,
+    // which the proxy's http page isn't; getRandomValues works on any page.
+    function newUuid() {
+      if (crypto.randomUUID && window.isSecureContext) return crypto.randomUUID();
+      const b = crypto.getRandomValues(new Uint8Array(16));
+      b[6] = (b[6] & 0x0f) | 0x40;
+      b[8] = (b[8] & 0x3f) | 0x80;
+      const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+    }
+
     function itemPresentation(it) {
       return (it.presentation_info || {}).presentation_uuid || it.target_uuid || "";
     }
@@ -306,7 +317,8 @@
       //   {id:{uuid,name,index}, type:"presentation", is_hidden, is_pco,
       //    presentation_info:{presentation_uuid, arrangement_name, arrangement_uuid},
       //    target_uuid, destination}
-      // id.uuid is the entry's own id, so it's left for ProPresenter to assign.
+      // id.uuid is the entry's own id (not the song's). ProPresenter requires one
+      // (null is refused: "expected a string"), so a new one is made here.
       // A new entry has no arrangement id, and it isn't known whether ProPresenter
       // wants that field left out, null or "" (it answered 404 to ""), so each is
       // tried in turn. A refused write changes nothing, so retrying is safe.
@@ -321,7 +333,7 @@
               const n = items.length;
               const info = { presentation_uuid: uuid, arrangement_name: "" };
               if (arr !== undefined) info.arrangement_uuid = arr;
-              items.push({ id: { uuid: null, name, index: n }, type: "presentation",
+              items.push({ id: { uuid: newUuid(), name, index: n }, type: "presentation",
                            is_hidden: false, is_pco: false, presentation_info: info,
                            target_uuid: uuid, destination: "presentation" });
               return after => after.length === n + 1 && itemPresentation(after[n]) === uuid;
