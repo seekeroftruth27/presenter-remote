@@ -22,6 +22,7 @@ it was given, so it can't be used to reach anything else on the network.
 """
 
 import argparse
+import datetime
 import mimetypes
 import os
 import socket
@@ -33,6 +34,8 @@ from urllib.parse import urlsplit
 
 TIMEOUT = 8  # seconds per ProPresenter request
 MAX_BODY = 2 * 1024 * 1024  # a whole playlist PUT is far smaller than this
+ERROR_LOG = "pp-proxy-errors.log"   # next to the exe: writes ProPresenter refused
+ERROR_LOG_MAX = 512 * 1024          # start the log afresh past this size
 
 
 def _here():
@@ -123,11 +126,29 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(r.status, r.read(), r.headers.get("Content-Type") or "",
                            cache="no-store")
         except urllib.error.HTTPError as e:   # pass ProPresenter's answer through
-            self._send(e.code, e.read(), e.headers.get("Content-Type") or "text/plain",
+            answer = e.read()
+            if body is not None:
+                self._log_refusal(path, e.code, answer, body)
+            self._send(e.code, answer, e.headers.get("Content-Type") or "text/plain",
                        cache="no-store")
         except Exception as e:                # unreachable, timed out, ...
             self._send(502, f"Can't reach ProPresenter at {self.pp}: {e}".encode(),
                        "text/plain", cache="no-store")
+
+    def _log_refusal(self, path, code, answer, sent):
+        """Keep a write ProPresenter refused (what was sent, what came back), so a
+        refusal can be diagnosed from the log instead of guessed at."""
+        log = os.path.join(_here(), ERROR_LOG)
+        try:
+            mode = "w" if os.path.isfile(log) and os.path.getsize(log) > ERROR_LOG_MAX else "a"
+            with open(log, mode, encoding="utf-8") as f:
+                f.write(f"=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S}  {self.command} {path}"
+                        f"  -> HTTP {code}\n")
+                f.write("ProPresenter said: " + (answer.decode("utf-8", "replace").strip() or "(nothing)") + "\n")
+                f.write("Sent: " + sent.decode("utf-8", "replace") + "\n\n")
+            print(f"ProPresenter refused {self.command} {path} (HTTP {code}); details in {ERROR_LOG}")
+        except OSError:
+            pass
 
     def _send(self, code, body, ctype, cache=None):
         self.send_response(code)

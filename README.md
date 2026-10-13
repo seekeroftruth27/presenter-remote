@@ -44,6 +44,9 @@ forwards only `/v1/` paths, and only to that one address.
 **Windows:** download **pp-remote-proxy-exe** from the latest *Build Windows proxy*
 run (Actions tab → the run → Artifacts) and run it. The first time, it asks for
 ProPresenter's address and remembers it in `pp-proxy.txt` beside the exe.
+If ProPresenter refuses a change, the proxy writes what it sent and what came
+back to `pp-proxy-errors.log` beside the exe. Send that file when reporting a
+problem.
 
 **Any OS with Python 3:** `python proxy/pp_proxy.py 192.168.1.50:1025 [--port 8080]`
 
