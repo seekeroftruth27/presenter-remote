@@ -266,7 +266,7 @@
           await call("PUT", path, putBody(items), 6000);
           ok = !!kept(((await getJSON(path)) || {}).items || []);
         } catch (e) {
-          if (e.refused) throw new Error(`ProPresenter refused the change (${e.message}). Nothing was changed.`);
+          if (e.refused) throw Object.assign(new Error(`ProPresenter refused the change (${e.message}). Nothing was changed.`), { refused: true });
           ok = false;
         }
         if (ok) return { ok: true };
@@ -301,27 +301,37 @@
         return res;
       },
 
-      // Add a library presentation to the end of a playlist.
+      // Add a library presentation to the end of a playlist, shaped like the
+      // entries ProPresenter itself returns:
+      //   {id:{uuid,name,index}, type:"presentation", is_hidden, is_pco,
+      //    presentation_info:{presentation_uuid, arrangement_name, arrangement_uuid},
+      //    target_uuid, destination}
+      // id.uuid is the entry's own id, so it's left for ProPresenter to assign.
+      // A new entry has no arrangement id, and it isn't known whether ProPresenter
+      // wants that field left out, null or "" (it answered 404 to ""), so each is
+      // tried in turn. A refused write changes nothing, so retrying is safe.
       async addToPlaylist(id, uuid, name) {
         if (!uuid) throw new Error("missing presentation");
         name = (name || "").trim().slice(0, 200);
-        return this.editPlaylist(id, items => {
-          const n = items.length;
-          // Shape the new item like a song already in the playlist, so it carries
-          // every field ProPresenter puts on one (its PUT rejects missing ones).
-          const like = items.find(it => it.type === "presentation" && it.presentation_info);
-          const item = like ? JSON.parse(JSON.stringify(like)) : {};
-          Object.assign(item, { id: { uuid, name, index: n }, type: "presentation",
-                                is_hidden: false, is_pco: false, target_uuid: uuid });
-          // Keep presentation_info's fields but not the other song's values (an
-          // arrangement id there would point at that song's arrangement).
-          const info = {};
-          for (const [k, v] of Object.entries(item.presentation_info || {}))
-            info[k] = typeof v === "string" ? "" : null;
-          item.presentation_info = Object.assign(info, { presentation_uuid: uuid, arrangement_name: "" });
-          items.push(item);
-          return after => after.length === n + 1 && itemPresentation(after[n]) === uuid;
-        });
+        const NO_ARRANGEMENT = [undefined, null, ""];   // undefined = leave the field out
+        let last;
+        for (const arr of NO_ARRANGEMENT) {
+          try {
+            return await this.editPlaylist(id, items => {
+              const n = items.length;
+              const info = { presentation_uuid: uuid, arrangement_name: "" };
+              if (arr !== undefined) info.arrangement_uuid = arr;
+              items.push({ id: { uuid: null, name, index: n }, type: "presentation",
+                           is_hidden: false, is_pco: false, presentation_info: info,
+                           target_uuid: uuid, destination: "presentation" });
+              return after => after.length === n + 1 && itemPresentation(after[n]) === uuid;
+            });
+          } catch (e) {
+            last = e;
+            if (!e.refused) throw e;   // not a refusal: something may have changed, stop
+          }
+        }
+        throw last;
       },
 
       async removeFromPlaylist(id, index, expectedName) {

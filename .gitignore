@@ -4,3 +4,4 @@ build/
 dist/
 *.spec
 pp-proxy.txt
+pp-proxy-errors.log
