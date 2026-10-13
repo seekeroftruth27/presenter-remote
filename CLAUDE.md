@@ -33,14 +33,19 @@ Learned from real 4xx answers, so trust these over the published docs:
   arrangement_name, arrangement_uuid}, target_uuid, destination, duration?}`.
   Headers have `header_color` and no `presentation_info`.
 - **Fields PUT is strict about:**
-  - `id.uuid` must be a UUID string. `null` is refused ("expected a string"). A **new** entry
-    needs a fresh random v4 UUID; it's the entry's own id, not the song's.
+  - **`id.uuid` on a presentation entry must be the SONG's uuid on PUT** (= `target_uuid` /
+    `presentation_uuid`), even though GET returns the entry's own id there. PUT looks the
+    song up by `id.uuid` and answers a bare **404** to an entry id; ProPresenter then makes
+    fresh entry ids. `putBody` does this for every write. `null` is refused ("expected a
+    string"). Confirmed by another project too:
+    github.com/nicolasdasilvaesilva/propresenter7-remote-web (issue #5, release v1.1.4).
   - `target_uuid` is required on every item, headers included (GET omits it on headers; send
     `""` there). On a presentation it's the presentation's uuid.
   - `presentation_info.arrangement_name` is required (`""` = no arrangement).
   - `arrangement_uuid` is required and must be one of the song's own arrangements: left
     out → 400 missing field, `null` → 400, `""` → 404. "No arrangement" is still an arrangement
     (one with an empty name).
+- **Entry ids change after every save**, so match entries by name/position, never by id.
 - **Song arrangements** come from `GET /v1/presentation/{uuid}`: `arrangements: [{id:{uuid,
   name}}]` and `current_arrangement` (a uuid). `addToPlaylist` uses the current one;
   `setArrangement` sets both the name and the matching `arrangement_uuid`.
