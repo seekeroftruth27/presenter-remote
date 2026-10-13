@@ -860,15 +860,12 @@
   $("plreload").addEventListener("click", () => { playlistsLoaded = false; freshNext = true; loadPlaylists(); });
 
   // ---- macros ------------------------------------------------------------
-  // One button per stage macro (STAGE_MACROS). A macro can change what's on screen, so
-  // the first tap only arms it; a second tap within ARM_MS runs it.
+  // One button per macro in ProPresenter's MACRO_COLLECTION collection, in that
+  // collection's order, so what the stage team sees is set in ProPresenter. A
+  // macro can change what's on screen, so the first tap only arms it; a second
+  // tap within ARM_MS runs it.
   const ARM_MS = 3000;
-  // Only these macros are shown, in this order. Names are matched ignoring case,
-  // spaces and punctuation ("&" = "and"), so "Kid's Lyrics" also matches "KIDS
-  // LYRICS". A name with no exact match takes the first macro containing it, so
-  // "Welcome" finds "PRE-SERVICE - Welcome Splash".
-  const STAGE_MACROS = ["Speaking", "Welcome", "Music & Lyrics", "Youth Music", "Kid's Lyrics"];
-  const macroKey = s => String(s || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+  const MACRO_COLLECTION = "Default";
   let macrosLoaded = false, armed = null, armTimer = 0;
 
   function macmsg(ok, msg) {
@@ -894,18 +891,19 @@
     disarm();
     macmsg(true, "Loading macros…");
     try {
-      const j = await api.macros();
+      const [j, c] = await Promise.all([api.macros(), api.macroCollections()]);
       macrosLoaded = true;
       box.innerHTML = "";
-      const find = n => {
-        const k = macroKey(n);
-        return j.macros.find(m => macroKey(m.name) === k) || j.macros.find(m => macroKey(m.name).includes(k));
-      };
-      const shown = STAGE_MACROS.map(find).filter(Boolean);
+      const want = MACRO_COLLECTION.trim().toLowerCase();
+      const col = c.collections.find(x => x.name.trim().toLowerCase() === want);
+      const byUuid = new Map(j.macros.map(m => [m.uuid, m]));
+      const shown = col ? col.uuids.map(u => byUuid.get(u)).filter(Boolean) : [];
       if (!shown.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = `None of these macros are in ProPresenter: ${STAGE_MACROS.join(", ")}.`;
+        empty.textContent = col
+          ? `The "${MACRO_COLLECTION}" macro collection in ProPresenter is empty.`
+          : `ProPresenter has no macro collection called "${MACRO_COLLECTION}".`;
         box.appendChild(empty);
         macmsg(true, "");
         return;
@@ -922,9 +920,7 @@
         b.addEventListener("click", () => tapMacro(m, b));
         box.appendChild(b);
       });
-      const missing = STAGE_MACROS.filter(n => !find(n));
-      if (missing.length) macmsg(false, `Not in ProPresenter: ${missing.join(", ")}.`);
-      else macmsg(true, "Tap a macro, then tap again to run it.");
+      macmsg(true, "Tap a macro, then tap again to run it.");
     } catch (e) {
       macmsg(false, `Couldn't load macros: ${e.message}`);
     }
