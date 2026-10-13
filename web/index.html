@@ -114,6 +114,7 @@
   .mac.armed small { display:block; }
   @keyframes armed { from { filter:brightness(1); } to { filter:brightness(1.35); } }
   #macros .empty { color:#666; }
+  .appver { flex:none; font-size:12px; color:#666; text-align:center; }
 
   /* settings tab (app only) */
   .tabs #tab-settings { flex:none; }
@@ -232,6 +233,7 @@
       <button id="macreload" class="reload" aria-label="Reload macros">↻</button>
     </div>
     <div id="macros"></div>
+    <div class="appver"></div>
   </div>
 
   <div class="view" id="v-settings" hidden>
@@ -243,6 +245,7 @@
       and enter the IP address and port shown there. The phone must be on the same Wi-Fi.</p>
     <button id="ppsave">Save &amp; connect</button>
     <div id="setmsg"></div>
+    <div class="appver"></div>
   </div>
 <script src="pp.js"></script>
 <script>
@@ -979,6 +982,13 @@
   }
 
   // ---- start -------------------------------------------------------------
+  // The version, from the VERSION file served beside the page (by the proxy,
+  // or packaged into the app), so it's clear which release is running.
+  fetch("VERSION", { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(v => {
+    v = (v || "").trim();
+    if (/^[0-9][0-9A-Za-z.+-]{0,30}$/.test(v))
+      document.querySelectorAll(".appver").forEach(e => { e.textContent = `PP Remote v${v}`; });
+  }).catch(() => {});
   setZoom(store.get("pp-zoom") || 4);
   const lastTab = $(store.get("pp-tab") || "tab-remote");
   if (APP && !store.get("pp-url")) openTab($("tab-settings"));   // first run

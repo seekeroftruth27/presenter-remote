@@ -94,6 +94,8 @@ class Handler(BaseHTTPRequestHandler):
     # -- the page ------------------------------------------------------------
     def _static(self):
         name = urlsplit(self.path).path.lstrip("/") or "index.html"
+        if name == "VERSION":   # shown on the page, so it's clear which release runs
+            return self._send(200, _version().encode(), "text/plain; charset=utf-8", cache="no-cache")
         if "/" in name or name.startswith("."):
             return self._send(404, b"not found", "text/plain")
         path = os.path.join(self.web, name)
