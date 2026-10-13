@@ -5,6 +5,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- **Showing a song from the Playlist tab now opens the Remote tab**, so its
+  slides are right there. If ProPresenter can't show it, you stay on the
+  playlist and see why.
+
 ## [v1.1.6] — 2026-10-13
 
 ### Fixed
