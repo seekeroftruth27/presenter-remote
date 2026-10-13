@@ -7,7 +7,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ### Added
 - **On-air colour** on the **Remote** tab: solid green when nothing is showing,
-  a slow red fade in and out while a slide is on screen (from any tab).
+  a slow red fade in and out while a slide is on screen (from any tab), and
+  then it reads **LIVE** instead of Remote.
 - **Clear slide** also runs the **Speaking** macro.
 
 ### Changed

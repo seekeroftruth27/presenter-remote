@@ -8,7 +8,7 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** beside the zoom.
     Clear slide also runs the **Speaking** macro.
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
-    out of red while a slide is showing (seen from any tab).
+    out of red while a slide is showing (seen from any tab), reading **LIVE**.
 - **Playlist tab:**
   - Pick each song's **arrangement** from its own list in ProPresenter: **MASTER**
     (the slides in order) first, then the named arrangements.

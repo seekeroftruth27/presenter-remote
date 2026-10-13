@@ -516,7 +516,7 @@
       if (Date.now() > noteUntil) show(true, "Connected to ProPresenter");
       $("item").textContent = j.item || j.name || "Nothing showing";
       $("pl").textContent = j.playlist ? `Playlist: ${j.playlist}` : "";
-      $("tab-remote").classList.toggle("onair", !!j.showing);
+      setOnAir(!!j.showing);
       if (!j.uuid) {
         if (shownUuid) { shownUuid = ""; shownIndex = null; thumbUuid = ""; showLive(null);
           $("slides").innerHTML = '<div class="empty">Nothing showing</div>'; }
@@ -529,6 +529,13 @@
     }
   }
 
+  // The Remote tab says LIVE and fades red while a slide is on screen.
+  function setOnAir(on) {
+    const t = $("tab-remote");
+    t.classList.toggle("onair", on);
+    t.textContent = on ? "LIVE" : "Remote";
+  }
+
   const CLEAR_MACRO = "Speaking";   // run after Clear slide
   async function act(btn) {
     const name = btn.dataset.act;
@@ -537,7 +544,7 @@
     try {
       await api.action(name);
       if (name === "clear-slide") {
-        $("tab-remote").classList.remove("onair");
+        setOnAir(false);
         try {
           await api.triggerMacroNamed(CLEAR_MACRO);
         } catch (e) {   // the clear itself worked; say what didn't
