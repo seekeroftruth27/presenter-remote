@@ -5,6 +5,10 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- **Macros tab** said there was no "Default" collection: ProPresenter's is
+  called **Default Collection**. Either name now works.
+
 ## [v1.1.3] — 2026-10-13
 
 ### Fixed

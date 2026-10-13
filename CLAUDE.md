@@ -46,7 +46,8 @@ Learned from real 4xx answers, so trust these over the published docs:
   `{uuid,name}` or wrapped `{id:{...}}`; `ident()` takes both.
 - **Playlist list.** `/v1/playlists` nodes have `field_type` (`playlist` / `group`) and
   `children`.
-- **Macros tab.** Shows ProPresenter's "Default" macro collection (`/v1/macro_collections`).
+- **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
+  from `/v1/macro_collections`.
 
 ## Diagnosing a refusal
 When ProPresenter refuses a write, the proxy appends what it sent and what came back to

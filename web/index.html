@@ -865,7 +865,8 @@
   // macro can change what's on screen, so the first tap only arms it; a second
   // tap within ARM_MS runs it.
   const ARM_MS = 3000;
-  const MACRO_COLLECTION = "Default";
+  const MACRO_COLLECTION = "Default Collection";
+  const MACRO_COLLECTION_ALSO = ["Default"];   // also accepted, if that's the name in use
   let macrosLoaded = false, armed = null, armTimer = 0;
 
   function macmsg(ok, msg) {
@@ -894,8 +895,9 @@
       const [j, c] = await Promise.all([api.macros(), api.macroCollections()]);
       macrosLoaded = true;
       box.innerHTML = "";
-      const want = MACRO_COLLECTION.trim().toLowerCase();
-      const col = c.collections.find(x => x.name.trim().toLowerCase() === want);
+      const norm = s => s.trim().toLowerCase();
+      const col = [MACRO_COLLECTION, ...MACRO_COLLECTION_ALSO].map(n =>
+        c.collections.find(x => norm(x.name) === norm(n))).find(Boolean);
       const byUuid = new Map(j.macros.map(m => [m.uuid, m]));
       const shown = col ? col.uuids.map(u => byUuid.get(u)).filter(Boolean) : [];
       if (!shown.length) {
