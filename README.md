@@ -7,11 +7,15 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - **Preview** of the live item's slides, with a 1–5 column zoom. The grid follows the live slide, and you tap a slide to show it.
   - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** beside the zoom.
 - **Playlist tab:**
-  - Pick each song's **arrangement**.
+  - Pick each song's **arrangement** from its own list in ProPresenter: **MASTER**
+    (the slides in order) first, then the named arrangements.
+  - **⌄** shows the song's slides in the chosen arrangement's order, four to a row.
+    The preview is view only: tapping a slide does nothing.
   - **▶** puts an item on screen.
   - **≡** drag to reorder, and **🗑** remove.
   - **Add** presentations from a library (with search).
-  - Items under an **Announcements** header are greyed out and can't be played, moved or removed from here.
+  - Items under an **Announcements** header aren't shown: they aren't the stage
+    team's. They stay in the playlist, untouched.
 - **Macros tab:**
   - The macros in ProPresenter's **Default Collection** macro collection, in that
     collection's order, as buttons in their own colours. Change what the stage
@@ -109,25 +113,21 @@ the whole playlist. So every edit (arrangement, add, remove) works like this:
 If ProPresenter refuses a write outright, nothing changed, and the page shows
 ProPresenter's own reason. Planning Center playlists are left read-only.
 
-ProPresenter can't list a song's arrangements either. The choices offered are the
-names that song already uses in any playlist (re-scanned at most every 10
-minutes, or on ↻), and **Other…** takes a typed name.
+A song's arrangements and slides come from ProPresenter itself. Each song is read
+once and reused for 10 minutes (↻ reads them again), two songs at a time.
 
 ## Notes
 
 - **Light on ProPresenter:**
   - It polls once a second, and only while the Remote tab is open.
   - Thumbnails load only near the screen, two at a time.
-  - The arrangement scan is cached.
+  - Songs (arrangements, slides) are read two at a time and reused for 10 minutes.
 - **Not authenticated:** anyone on the same network who can reach the proxy or
   ProPresenter can control it. That's the same as ProPresenter's own API.
-- **Still unconfirmed on real ProPresenter:**
-  - Playlist add/remove.
-  - Macros.
-  - Whether the preview's slide numbering matches a song that uses an
-    arrangement.
-
-  Try these on a test playlist first, and report any error message the page shows.
+- **Confirmed on real ProPresenter** (v1.1.5): adding from a library and the 404
+  fix for playlist edits, plus macros from the Default Collection. New features
+  are worth trying on a test playlist first; if ProPresenter refuses anything,
+  send `pp-proxy-errors.log`.
 
 ## Releasing
 
