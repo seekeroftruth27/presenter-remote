@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.2.0] — 2026-10-13
+
 ### Added
 - **Slide preview**: **⌄** next to a song's ≡ shows its slides, four to a row, in
   the order of the arrangement chosen. View only.
@@ -21,11 +23,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 ### Fixed
 - **Playlists inside folders** (e.g. an archive folder) are listed; the folder
   itself no longer shows up as if it were a playlist.
-
-## [v1.1.7] — 2026-10-13
-
-### Changed
-- **Showing a song from the Playlist tab now opens the Remote tab**, so its
-  slides are right there. If ProPresenter can't show it, you stay on the
-  playlist and see why.
 
