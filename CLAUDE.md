@@ -61,6 +61,12 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **Hidden section.** Items under an "Announcements" header aren't rendered. Rows carry
   `data-index` (the item's index in the whole playlist), and drag computes the target index
   from the next shown row, so hidden items keep their place.
+- **On air.** `live()` reads `GET /v1/status/layers` (`slide` true/false) to tell whether a
+  slide is showing; the slide index keeps naming the last presentation after a clear. Falls
+  back to "a presentation is live" if that request fails.
+- **MASTER for a song with only named arrangements** (`api.MASTER_NONE`): which
+  `arrangement_uuid` ProPresenter wants is **unconfirmed**; `setArrangement` tries the song's
+  own uuid, then the all-zero uuid. Check `pp-proxy-errors.log` if it's refused.
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
   from `/v1/macro_collections`.
 

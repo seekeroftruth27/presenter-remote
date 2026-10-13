@@ -24,6 +24,12 @@
           border-radius:10px; padding:3px; }
   .tabs button { background:transparent; color:#999; font-size:20px; padding:17px 0; border-radius:8px; }
   .tabs button.on { background:#333; color:#fff; }
+  /* Remote tab: solid green while it's open and nothing is on screen; a slow red
+     fade in and out whenever a slide is showing (on any tab). */
+  #tab-remote.on { background:#15803d; color:#fff; }
+  #tab-remote.onair { color:#fff; animation:livefade 2.4s ease-in-out infinite; }
+  @keyframes livefade { 0%, 100% { background-color:rgba(220, 38, 38, .25); }
+                        50% { background-color:rgba(220, 38, 38, 1); } }
   .view { flex:1; display:flex; flex-direction:column; gap:12px; min-height:0; }
   .view[hidden] { display:none; }
   #state { font-size:16px; color:#8a8; min-height:1.3em; }
@@ -144,10 +150,10 @@
      remove; the slide preview opens underneath. On a phone the arrangement drops
      to a second line. */
   .song { background:#1c1c1c; border-radius:12px; padding:8px 10px; display:grid; gap:6px 8px;
-          align-items:center; grid-template-areas:"grip tog nm arr play rm" "pv pv pv pv pv pv";
+          align-items:center; grid-template-areas:"grip tog nm arr rm play" "pv pv pv pv pv pv";
           grid-template-columns:40px 40px minmax(0, 1fr) minmax(0, 300px) 68px 68px; }
   @media (max-width:600px) {
-    .song { grid-template-areas:"grip tog nm play rm" ". . arr arr arr" "pv pv pv pv pv";
+    .song { grid-template-areas:"grip tog nm rm play" ". . arr arr arr" "pv pv pv pv pv";
             grid-template-columns:30px 34px minmax(0, 1fr) 56px 56px; }
   }
   .tog { grid-area:tog; background:transparent; color:#aaa; padding:0; min-height:44px;
@@ -271,6 +277,9 @@
     state.textContent = msg;
     state.classList.toggle("bad", !ok);
   }
+  // A note that the once-a-second "Connected" doesn't overwrite for a few seconds.
+  let noteUntil = 0;
+  function note(ok, msg) { show(ok, msg); noteUntil = Date.now() + 5000; }
 
   function plmsg(ok, msg) {
     $("plmsg").textContent = msg;
@@ -291,6 +300,20 @@
   const APP = !!(window.Capacitor && window.Capacitor.isNativePlatform &&
                  window.Capacitor.isNativePlatform());
   let api = window.PPDirect.create(APP ? store.get("pp-url") : location.origin);
+
+  // ---- double tap ----------------------------------------------------------
+  // Things that put something on screen need two taps in quick succession, so a
+  // stray touch can't. (Not the dblclick event: iOS doesn't reliably send it.)
+  const DOUBLE_TAP_MS = 450;
+  function onDoubleTap(el, fn, hint) {
+    let last = 0;
+    el.addEventListener("click", e => {
+      const now = Date.now();
+      if (now - last < DOUBLE_TAP_MS) { last = 0; fn(e); return; }
+      last = now;
+      if (hint) hint();
+    });
+  }
 
   // ---- tabs --------------------------------------------------------------
   let playlistsLoaded = false;
@@ -379,7 +402,7 @@
         bar.style.background = s.color;
         cue.appendChild(bar);
       }
-      cue.addEventListener("click", () => jump(uuid, i, cue));
+      onDoubleTap(cue, () => jump(uuid, i, cue), () => note(true, "Double-tap a slide to show it."));
       grid.appendChild(cue);
     });
   }
@@ -490,9 +513,10 @@
   async function poll() {
     try {
       const j = await api.live(shownUuid);
-      show(true, "Connected to ProPresenter");
+      if (Date.now() > noteUntil) show(true, "Connected to ProPresenter");
       $("item").textContent = j.item || j.name || "Nothing showing";
       $("pl").textContent = j.playlist ? `Playlist: ${j.playlist}` : "";
+      $("tab-remote").classList.toggle("onair", !!j.showing);
       if (!j.uuid) {
         if (shownUuid) { shownUuid = ""; shownIndex = null; thumbUuid = ""; showLive(null);
           $("slides").innerHTML = '<div class="empty">Nothing showing</div>'; }
@@ -505,12 +529,21 @@
     }
   }
 
+  const CLEAR_MACRO = "Speaking";   // run after Clear slide
   async function act(btn) {
     const name = btn.dataset.act;
     btn.disabled = true;
     const label = btn.textContent.trim();
     try {
       await api.action(name);
+      if (name === "clear-slide") {
+        $("tab-remote").classList.remove("onair");
+        try {
+          await api.triggerMacroNamed(CLEAR_MACRO);
+        } catch (e) {   // the clear itself worked; say what didn't
+          note(false, `Cleared, but the ${CLEAR_MACRO} macro didn't run: ${e.message}`);
+        }
+      }
       if (navigator.vibrate) navigator.vibrate(15);
       poll();
     } catch (e) {
@@ -652,12 +685,6 @@
       grip.addEventListener("pointerdown", e => dragItem(e, row, playlistId, it));
       row.appendChild(grip);
     }
-    const play = document.createElement("button");
-    play.className = "play";
-    play.textContent = "▶";
-    play.setAttribute("aria-label", `Show ${it.name}`);
-    play.addEventListener("click", () => trigger(playlistId, it, play));
-    row.appendChild(play);
     if (!isPco) {
       const rm = document.createElement("button");
       rm.className = "rm";
@@ -666,6 +693,13 @@
       rm.addEventListener("click", () => removeItem(playlistId, it, rm));
       row.appendChild(rm);
     }
+    const play = document.createElement("button");
+    play.className = "play";
+    play.textContent = "▶";
+    play.setAttribute("aria-label", `Show ${it.name} (double-tap)`);
+    onDoubleTap(play, () => trigger(playlistId, it, play),
+                () => plmsg(true, `Double-tap ▶ to show "${it.name}".`));
+    row.appendChild(play);
     if (it.type !== "presentation") {
       const t = document.createElement("div");
       t.className = "other";
@@ -726,15 +760,16 @@
 
     loadSong(it.song, fresh).then(s => {
       songData = s;
-      if (!s.arrangements.length) return;   // nothing to choose from
+      // MASTER is always offered first. A song that lists no unnamed arrangement
+      // gets api.MASTER_NONE (pp.js works out what to send for it).
       sel.innerHTML = "";
       const master = s.arrangements.find(a => !a.name);
-      if (master) sel.add(new Option(MASTER, master.uuid));
+      const masterValue = master ? master.uuid : api.MASTER_NONE;
+      sel.add(new Option(MASTER, masterValue));
       s.arrangements.filter(a => a.name).forEach(a => sel.add(new Option(a.name, a.uuid)));
-      const known = s.arrangements.some(a => a.uuid === current);
-      if (!known) {   // the entry names one the song doesn't list: go by name
-        const byName = s.arrangements.find(a => a.name === it.arrangement);
-        current = byName ? byName.uuid : (master || s.arrangements[0]).uuid;
+      if (!s.arrangements.some(a => a.uuid === current)) {   // go by name instead
+        const byName = it.arrangement && s.arrangements.find(a => a.name === it.arrangement);
+        current = byName ? byName.uuid : masterValue;
       }
       sel.value = current;
       sel.disabled = isPco;
@@ -1104,7 +1139,14 @@
   if (APP && !store.get("pp-url")) openTab($("tab-settings"));   // first run
   else if (lastTab && !lastTab.hidden) openTab(lastTab);
   poll();
-  setInterval(() => { if (!document.hidden && !$("v-remote").hidden) poll(); }, 1000);
+  // Every second on the Remote tab; every 4 s elsewhere, just to keep the Remote
+  // tab's live colour right.
+  let tick = 0;
+  setInterval(() => {
+    if (document.hidden) return;
+    tick++;
+    if (!$("v-remote").hidden || tick % 4 === 0) poll();
+  }, 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
 })();
 </script>
