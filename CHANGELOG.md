@@ -6,6 +6,14 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 ## [Unreleased]
 
 ### Fixed
+- **Adding from a library** now works with real ProPresenter: each new entry
+  names one of the song's own arrangements (its current one), which
+  ProPresenter requires.
+- **Choosing an arrangement** now changes the arrangement ProPresenter actually
+  uses, not just its name. A name the song doesn't have is reported instead of
+  being saved.
+
+### Fixed
 - **Macros tab** said there was no "Default" collection: ProPresenter's is
   called **Default Collection**. Either name now works.
 
