@@ -179,6 +179,18 @@ class Handler(BaseHTTPRequestHandler):
         self._forward()
 
 
+class Server(ThreadingHTTPServer):
+    # http.server turns on SO_REUSEADDR, which on Windows lets a second proxy
+    # bind a port another one already holds, with no error: the new window
+    # looks fine while the old copy keeps answering. Claim the port exclusively.
+    if os.name == "nt":
+        allow_reuse_address = False
+
+        def server_bind(self):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            super().server_bind()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Serve the PP Remote page and forward its ProPresenter calls.")
     ap.add_argument("propresenter", nargs="?", help="ProPresenter's address, e.g. 192.168.1.50:1025 "
@@ -208,7 +220,14 @@ def main():
     if not os.path.isfile(os.path.join(Handler.web, "index.html")):
         sys.exit(f"remote page not found in {Handler.web}")
 
-    httpd = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
+    try:
+        httpd = Server(("0.0.0.0", args.port), Handler)
+    except OSError as e:
+        print(f"Port {args.port} is already in use ({e.strerror}). Is PP Remote proxy already "
+              "running? Close the other copy (or use --port) and start this again.")
+        if getattr(sys, "frozen", False):
+            input("Press Enter to close.")
+        sys.exit(1)
     print(f"PP Remote proxy v{_version()}")
     print(f"ProPresenter: {Handler.pp}")
     print(f"On a phone on the same Wi-Fi, open:  http://{_lan_ip()}:{args.port}")
