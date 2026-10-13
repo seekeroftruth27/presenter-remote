@@ -672,6 +672,8 @@
       await api.triggerPlaylist(playlistId, it.index, it.name);
       if (navigator.vibrate) navigator.vibrate(15);
       plmsg(true, `On screen: "${it.name}".`);
+      openTab($("tab-remote"));   // straight to its slides
+      poll();
     } catch (e) {
       plmsg(false, e.message);
     } finally {
