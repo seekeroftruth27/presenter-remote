@@ -57,9 +57,9 @@ Learned from real 4xx answers, so trust these over the published docs:
   - `target_uuid` is required on every item, headers included (GET omits it on headers; send
     `""` there). On a presentation it's the presentation's uuid.
   - `presentation_info.arrangement_name` is required (`""` = no arrangement).
-  - `arrangement_uuid` is required and must be one of the song's own arrangements: left
-    out → 400 missing field, `null` → 400, `""` → 404. "No arrangement" is still an arrangement
-    (one with an empty name).
+  - `arrangement_uuid` is required: left out → 400 missing field, `null` → 400. `""` gave a
+    404 back when `id.uuid` was also wrong, so that may not have been about `""` (see MASTER
+    below). "No arrangement" (MASTER) is still an arrangement, with an empty name.
 - **Entry ids change after every save**, so match entries by name/position, never by id.
 - **Song arrangements** come from `GET /v1/presentation/{uuid}`: `arrangements: [{id:{uuid,
   name}}]` and `current_arrangement` (a uuid). `addToPlaylist` uses the current one;
@@ -89,9 +89,13 @@ Learned from real 4xx answers, so trust these over the published docs:
   uuid of its own, and playlist entries using it carry `arrangement_name ""` plus that uuid.
   Some songs list it in `arrangements` (unnamed). A song with only named arrangements (e.g.
   just "Default") leaves it out, and its uuid shows only as `current_arrangement` while MASTER
-  is the song's current arrangement; `song()` adds it from there. Otherwise `setArrangement`
-  takes it from another entry of the same song that uses MASTER, or writes nothing and asks
-  the user to pick Master once in ProPresenter (`api.MASTER_NONE`).
+  is the song's current arrangement, or on a playlist entry that uses MASTER. Once seen it's
+  kept per song (`masters`, also in localStorage `ppMasters`), because switching the song to a
+  named arrangement hides it again. MASTER picked while its uuid is unknown
+  (`api.MASTER_NONE`) is sent as `arrangement_uuid ""` with `arrangement_name ""`, as another
+  remote sends every song it adds. Whether real ProPresenter takes `""` (now that `id.uuid` is
+  right) is **unconfirmed**: the old `"" → 404` was seen while `id.uuid` was still wrong. If
+  it doesn't stick, the page asks the user to pick Master once in ProPresenter.
   Sending the song's own uuid as `arrangement_uuid` was answered **204 but didn't stick**
   (seen in `pp-proxy-changes.log`): a 2xx doesn't prove ProPresenter checked a field, so
   never send invented ids.

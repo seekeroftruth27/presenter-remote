@@ -9,6 +9,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 - The Remote tab's slides now follow the arrangement being played (for
   example "Default" with its repeated choruses), not the song's original
   order. The highlight, the Live panel and double-tap all use that order.
+- MASTER (the song's own slide order) could be "not found" after a song was
+  switched to a named arrangement such as "Default". The remote now remembers
+  each song's MASTER once it has seen it. When it hasn't, it asks ProPresenter
+  for "no arrangement"; if ProPresenter doesn't switch, the remote says to pick
+  Master once in ProPresenter.
 
 ## [v1.3.4] — 2026-10-14
 
