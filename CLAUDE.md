@@ -64,7 +64,8 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **Arrangements can't be set through the API (tested on real ProPresenter, Oct 2026).** A
   playlist entry always carries its song's current arrangement (`current_arrangement`), and
   PUT ignores whatever arrangement it's sent, answering 204 anyway: switching an entry to
-  "Default" (its real uuid), to MASTER (its real uuid, saved while it was current), to `""`,
+  "Default" (its real uuid), from one named arrangement to another ("Default" → "Test", both
+  listed), to MASTER (its real uuid, saved while it was current), to `""`,
   to the all-zeros uuid, and adding a song with a named arrangement all came back unchanged.
   The published API (openapi.propresenter.com/swagger.json) has no endpoint that writes a
   presentation. So the Playlist tab shows the arrangement and doesn't offer to change it;
