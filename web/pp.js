@@ -142,8 +142,13 @@
         const nm = name.trim();
         return { uuid: id, name: /^master$/i.test(nm) ? "" : nm, order: order.length ? order : master };
       }).filter(a => a.uuid);
-      const data = { uuid, slides, arrangements, masterOrder: master,
-                     current: typeof p.current_arrangement === "string" ? p.current_arrangement : "" };
+      const current = typeof p.current_arrangement === "string" ? p.current_arrangement : "";
+      // MASTER (no arrangement) isn't always listed: a song with only named
+      // arrangements leaves it out, but when MASTER is the song's current
+      // arrangement, current_arrangement carries its uuid.
+      if (!arrangements.some(a => !a.name) && current && !arrangements.some(a => a.uuid === current))
+        arrangements.unshift({ uuid: current, name: "", order: master });
+      const data = { uuid, slides, arrangements, masterOrder: master, current };
       songCache.set(uuid, { at: Date.now(), data });
       return data;
     }
@@ -308,19 +313,29 @@
 
       // Set an entry's arrangement to one of its song's own (by uuid; the MASTER
       // is the one with an empty name). ProPresenter goes by arrangement_uuid;
-      // arrangement_name is kept in step with it. MASTER_NONE = MASTER picked for
-      // a song that has only named arrangements: there's no arrangement to point
-      // at, so nothing is written. (Sending the song's own uuid there was accepted
-      // with 204 but didn't stick, so invented ids are never sent.)
+      // arrangement_name is kept in step with it. MASTER has a uuid of its own,
+      // but a song with only named arrangements lists it only while MASTER is
+      // the song's current arrangement (see song()). MASTER_NONE = MASTER picked
+      // when song() didn't find it: then a playlist entry of the same song that
+      // already uses MASTER supplies the uuid, or nothing is written. (Sending
+      // the song's own uuid was accepted with 204 but didn't stick, so invented
+      // ids are never sent.)
       MASTER_NONE: "\u0000master",
       async setArrangement(id, index, expectedName, arrangementUuid) {
         const peek = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
         checkItem(peek, index, expectedName);
         if (peek[index].type !== "presentation") throw new Error("Only songs/presentations have arrangements");
-        const s = await song(itemPresentation(peek[index]), true);
+        const songId = itemPresentation(peek[index]);
+        const s = await song(songId, true);
         if (arrangementUuid === this.MASTER_NONE) {
-          const m = s.arrangements.find(a => !a.name);
-          if (!m) throw new Error(`"${expectedName}" has no MASTER arrangement in ProPresenter, only named ones. Nothing was changed.`);
+          const m = s.arrangements.find(a => !a.name) ||
+            peek.filter(it => it.type === "presentation" && itemPresentation(it) === songId)
+                .map(it => it.presentation_info || {})
+                .filter(i => !i.arrangement_name && i.arrangement_uuid &&
+                             !s.arrangements.some(a => a.uuid === i.arrangement_uuid))
+                .map(i => ({ uuid: i.arrangement_uuid, name: "" }))[0];
+          if (!m) throw new Error(`The remote can't find MASTER for "${expectedName}" yet. Pick Master for it once in ProPresenter, then it works here too. Nothing was changed.`);
+          if (!s.arrangements.some(a => a.uuid === m.uuid)) s.arrangements.unshift(m);
           arrangementUuid = m.uuid;
         }
         const arr = s.arrangements.find(a => a.uuid === arrangementUuid);

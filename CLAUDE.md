@@ -66,8 +66,8 @@ Learned from real 4xx answers, so trust these over the published docs:
   `setArrangement` sets both the name and the matching `arrangement_uuid`. The unnamed
   arrangement is shown as **MASTER**. `song()` in pp.js reads the page once (cached 10 min)
   and gives slides in master order (= thumbnail index) and each arrangement's slide order.
-  How a *named* arrangement lists its `groups` is unconfirmed: `song()` accepts group uuid
-  strings or `{uuid}` / `{id:{uuid}}` objects, and falls back to master order.
+  A named arrangement lists its `groups` as group uuid strings (`song()` also accepts
+  `{uuid}` / `{id:{uuid}}` objects, and falls back to master order).
 - **`destination`** is `"presentation"` or `"announcements"`. New songs use `"presentation"`.
 - **Response shapes vary.** Libraries, macros and collections arrive either flat
   `{uuid,name}` or wrapped `{id:{...}}`; `ident()` takes both.
@@ -79,11 +79,17 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **On air.** `live()` reads `GET /v1/status/layers` (`slide` true/false) to tell whether a
   slide is showing; the slide index keeps naming the last presentation after a clear. Falls
   back to "a presentation is live" if that request fails.
-- **MASTER for a song with only named arrangements** (`api.MASTER_NONE`, e.g. songs whose only
-  arrangement is "Default"): there's no arrangement to point at, so nothing is written and the
-  page says so. Sending the song's own uuid as `arrangement_uuid` was answered **204 but didn't
-  stick** (seen in `pp-proxy-changes.log`), so a 2xx doesn't prove ProPresenter validated a
-  field. Never send invented ids.
+- **MASTER is ProPresenter's built-in "no arrangement"** (slides in their own order). It has a
+  uuid of its own, and playlist entries using it carry `arrangement_name ""` plus that uuid.
+  Some songs list it in `arrangements` (unnamed). A song with only named arrangements (e.g.
+  just "Default") leaves it out, and its uuid shows only as `current_arrangement` while MASTER
+  is the song's current arrangement; `song()` adds it from there. Otherwise `setArrangement`
+  takes it from another entry of the same song that uses MASTER, or writes nothing and asks
+  the user to pick Master once in ProPresenter (`api.MASTER_NONE`).
+  Sending the song's own uuid as `arrangement_uuid` was answered **204 but didn't stick**
+  (seen in `pp-proxy-changes.log`): a 2xx doesn't prove ProPresenter checked a field, so
+  never send invented ids.
+- **Named arrangements' `groups`** are plain group-uuid strings, in play order (confirmed).
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
   from `/v1/macro_collections`.
 

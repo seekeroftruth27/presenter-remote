@@ -8,8 +8,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 ### Fixed
 - Picking MASTER for a song that only has named arrangements (such as "Default")
   showed "ProPresenter didn't take the change; the playlist was put back as it
-  was." Such a song has no MASTER in ProPresenter, so the app now says that and
-  changes nothing, instead of saving the playlist twice.
+  was." The app now finds MASTER for such songs. If ProPresenter doesn't show it
+  yet, the app asks you to pick Master once in ProPresenter and changes nothing.
 
 ### Changed
 - Safer playlist editing: when a change doesn't stick, the app tells you and
