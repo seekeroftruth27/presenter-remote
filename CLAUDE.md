@@ -82,9 +82,14 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **Live slides follow the played arrangement.** `live()` takes the arrangement from the
   active playlist entry (`/v1/playlist/active` → `playlist.uuid` + `item.index`, re-read and
   checked to be the same song), else the song's `current_arrangement`, and lists slides in
-  that arrangement's group order (MASTER = the song's own order). Thumbnails go by the
-  song's own order (`slide.thumb`); `slide_index` and `/presentation/active/{i}/trigger` are
-  taken to count cues in the played arrangement (**unconfirmed** on real ProPresenter).
+  that arrangement's group order (MASTER = the song's own order). `slide_index` and
+  `/presentation/active/{i}/trigger` are taken to count cues in the played arrangement
+  (**unconfirmed** on real ProPresenter).
+- **Thumbnails go by the song's CURRENT arrangement** (confirmed on real ProPresenter): a song
+  whose current arrangement is "Default" (21 cues with repeats) has thumbnails 0..20 in that
+  order, while `total_cues` still says 11 (the song's own slide count). So a slide's thumbnail
+  is where it first comes in the current arrangement (`thumbIndexes`; -1 = not in it, show the
+  text). MASTER is listed in `arrangements` with `groups: []` (= the song's own order).
 - **MASTER is ProPresenter's built-in "no arrangement"** (slides in their own order). It has a
   uuid of its own, and playlist entries using it carry `arrangement_name ""` plus that uuid.
   Some songs list it in `arrangements` (unnamed). A song with only named arrangements (e.g.

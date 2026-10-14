@@ -388,8 +388,8 @@
       const img = document.createElement("div");
       img.className = "img";
       img.textContent = s.text;
-      img.dataset.i = s.thumb ?? i;   // thumbnails go by the song's own order
-      thumbWatch.observe(img);
+      img.dataset.i = s.thumb ?? i;   // thumbnails go by the song's current arrangement
+      if (img.dataset.i >= 0) thumbWatch.observe(img);
       const cap = document.createElement("div");
       cap.className = "cap";
       const n = document.createElement("span");
@@ -442,6 +442,7 @@
       if (liveKey === key) { img.classList.remove("pic"); img.style.backgroundImage = ""; }
     }, 700);
     const uuid = thumbUuid, pic = new Image(), thumb = s && s.thumb != null ? s.thumb : index;
+    if (thumb < 0) { clearTimeout(slow); img.classList.remove("pic"); img.style.backgroundImage = ""; return; }
     pic.onload = () => {
       clearTimeout(slow);
       if (liveKey === key) { img.style.backgroundImage = `url("${pic.src}")`; img.classList.add("pic"); }
@@ -761,7 +762,8 @@
         t.textContent = s.text || s.group || "";
         if (s.color) t.style.setProperty("--gc", s.color);
         pv.appendChild(t);
-        queueThumb(t, songData.uuid, i);
+        const th = songData.thumbs ? songData.thumbs[i] : i;
+        if (th >= 0) queueThumb(t, songData.uuid, th);
       }
     };
     nm.addEventListener("click", () => tog.click());   // the title opens/closes it too
