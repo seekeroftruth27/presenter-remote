@@ -270,7 +270,14 @@
       // write it back, read it again to confirm. A write ProPresenter refuses
       // (4xx) changed nothing; one it took that didn't stick is put back. `edit(items)` changes items in place (or throws) and
       // returns kept(after).
+      // Playlist editing is off unless the page turns it on (it does only when the
+      // proxy says it was started with --allow-playlist-edits). Every playlist
+      // change goes through editPlaylist, so this is the one gate.
+      editing: false,
+      setEditing(on) { this.editing = !!on; },
+
       async editPlaylist(id, edit) {
+        if (!this.editing) throw new Error("Playlist editing is turned off.");
         const path = `/v1/playlist/${enc(id)}`;
         const items = ((await getJSON(path)) || {}).items || [];
         if (items.some(it => it.is_pco))
