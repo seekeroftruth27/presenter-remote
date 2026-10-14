@@ -5,6 +5,12 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- The proxy window no longer fills with an error ("'Handler' object has no
+  attribute 'path'") when something connects that isn't plain HTTP, for example
+  a browser trying `https://`. It now prints one line saying the request was
+  ignored. Those requests never reached ProPresenter either way.
+
 ## [v1.3.2] — 2026-10-14
 
 ### Changed

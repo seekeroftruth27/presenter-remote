@@ -96,8 +96,12 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "PPRemoteProxy"
 
     def log_message(self, fmt, *args):  # quieter than the default
-        if not self.path.startswith("/v1/"):
-            sys.stderr.write("%s %s\n" % (self.command, self.path))
+        path = getattr(self, "path", None)
+        if path is None:   # not a readable HTTP request (e.g. https:// to this http port)
+            sys.stderr.write("Ignored a request from %s that isn't plain HTTP "
+                             "(open the page with http://, not https://)\n" % self.client_address[0])
+        elif not path.startswith("/v1/"):
+            sys.stderr.write("%s %s\n" % (getattr(self, "command", "?"), path))
 
     # -- the page ------------------------------------------------------------
     def _static(self):
