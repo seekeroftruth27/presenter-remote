@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.5] — 2026-10-14
+
 ### Fixed
 - The Remote tab's slides now follow the arrangement being played (for
   example "Default" with its repeated choruses), not the song's original
@@ -14,17 +16,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
   each song's MASTER once it has seen it. When it hasn't, it asks ProPresenter
   for "no arrangement"; if ProPresenter doesn't switch, the remote says to pick
   Master once in ProPresenter.
-
-## [v1.3.4] — 2026-10-14
-
-### Fixed
-- Picking MASTER for a song that only has named arrangements (such as "Default")
-  showed "ProPresenter didn't take the change; the playlist was put back as it
-  was." The app now finds MASTER for such songs. If ProPresenter doesn't show it
-  yet, the app asks you to pick Master once in ProPresenter and changes nothing.
-
-### Changed
-- Safer playlist editing: when a change doesn't stick, the app tells you and
-  sends nothing more. It no longer writes the old playlist back by itself. It
-  also saves one change at a time and waits longer for ProPresenter to answer.
 
