@@ -414,7 +414,7 @@
           };
         }).catch(e => {
           if (!guessed) throw e;
-          throw Object.assign(new Error(`ProPresenter didn't switch "${expectedName}" to MASTER from here. ` +
+          throw Object.assign(new Error(`ProPresenter didn't switch "${expectedName}" to Master from here. ` +
             `Pick Master for it once in ProPresenter; after that it works here too.` +
             (e.refused ? " Nothing was changed." : "")), { refused: e.refused });
         });

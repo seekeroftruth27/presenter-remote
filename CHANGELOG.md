@@ -5,6 +5,9 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- The arrangement list says "Master", as ProPresenter does, instead of "MASTER".
+
 ### Fixed
 - The Remote tab's slides now follow the arrangement being played (for
   example "Default" with its repeated choruses), not the song's original

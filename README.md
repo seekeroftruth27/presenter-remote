@@ -10,7 +10,7 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.
 - **Playlist tab** (read-only unless editing is switched on; see below):
-  - Each song's **arrangement** from its own list in ProPresenter: **MASTER**
+  - Each song's **arrangement** from its own list in ProPresenter: **Master**
     (the slides in order) first, then the named arrangements.
   - **⌄** shows the song's slides in the chosen arrangement's order, four to a row.
     The preview is view only: tapping a slide does nothing.
