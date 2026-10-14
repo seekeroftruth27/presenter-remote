@@ -100,7 +100,8 @@ Learned from real 4xx answers, so trust these over the published docs:
   named arrangement hides it again. MASTER picked while its uuid is unknown
   (`api.MASTER_NONE`) **sends nothing**; the page asks the user to pick Master once in
   ProPresenter. `arrangement_uuid ""` with `arrangement_name ""` was tried on real ProPresenter
-  (with `id.uuid` right): **204, but it didn't stick**. None of the 36 playlists had the
+  (with `id.uuid` right): **204, but it didn't stick**. Neither did the all-zeros uuid
+  `00000000-0000-0000-0000-000000000000` (also 204, tried on MAIN). None of the 36 playlists had the
   affected songs on Master, so there was nowhere else to learn the id.
   Sending the song's own uuid as `arrangement_uuid` was answered **204 but didn't stick**
   (seen in `pp-proxy-changes.log`): a 2xx doesn't prove ProPresenter checked a field, so
