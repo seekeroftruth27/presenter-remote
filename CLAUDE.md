@@ -24,6 +24,17 @@ README.md for features and setup, and CHANGELOG.md for the history.
   - Cloud sessions can push only `claude/*` branches; don't work around that.
   - Don't merge a PR without the user saying so.
 
+## Playlist writes are OFF by default (incident)
+While the stage team tested the remote, ProPresenter's install was damaged (screen
+configurations lost) during playlist editing. The cause isn't established, but the user
+believes it was one of the modify flows (whole-playlist `PUT`). Since then:
+- The proxy forwards only GET unless started with `--allow-playlist-edits`; writes are
+  refused with 403 and recorded in `pp-proxy-changes.log` (passed-on writes too).
+- `api.editing` gates `editPlaylist` (the only write path); the page turns it on only when
+  `GET /MODE` (served by the proxy) says `edit`. The app (no proxy) never edits.
+- Don't re-enable writes by default, add new write paths, or test writes against the real
+  ProPresenter without the user's explicit go-ahead and a backup.
+
 ## What ProPresenter's playlist API really accepts
 Learned from real 4xx answers, so trust these over the published docs:
 - **Whole playlist only.** `PUT /v1/playlist/{id}` replaces the whole item list; there's no

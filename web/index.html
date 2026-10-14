@@ -622,13 +622,14 @@
         if (it.type === "header") hide = HIDDEN_SECTION.test(it.name);
         if (!hide) list.appendChild(renderItem(id, it, pco, fresh));
       });
-      plEditable = !pco;
+      plEditable = !pco && EDITING;
       syncAddButton();
     } catch (e) {
       plmsg(false, `Couldn't load playlist: ${e.message}`);
     }
   }
 
+  let EDITING = false;   // see "start": only with a proxy started to allow it
   const HIDDEN_SECTION = /announcement/i;
   const ICON_GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
   const ICON_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
@@ -688,7 +689,7 @@
     nm.className = "nm";
     nm.textContent = it.name;
     row.appendChild(nm);
-    if (!isPco) {
+    if (!isPco && EDITING) {
       const grip = document.createElement("div");
       grip.className = "grip";
       grip.innerHTML = ICON_GRIP;
@@ -696,7 +697,7 @@
       grip.addEventListener("pointerdown", e => dragItem(e, row, playlistId, it));
       row.appendChild(grip);
     }
-    if (!isPco) {
+    if (!isPco && EDITING) {
       const rm = document.createElement("button");
       rm.className = "rm";
       rm.innerHTML = ICON_TRASH;
@@ -784,7 +785,7 @@
         current = byName ? byName.uuid : masterValue;
       }
       sel.value = current;
-      sel.disabled = isPco;
+      sel.disabled = isPco || !EDITING;
       if (!pv.hidden) drawPreview();
     }, e => {
       songErr = e;
@@ -809,7 +810,7 @@
         plmsg(false, e.message);
       } finally {
         row.classList.remove("busy");
-        sel.disabled = isPco;
+        sel.disabled = isPco || !EDITING;
       }
     });
     return row;
@@ -1169,6 +1170,15 @@
   }
 
   // ---- start -------------------------------------------------------------
+  // Playlist editing (add, remove, reorder, arrangements) is off unless the
+  // proxy was started with --allow-playlist-edits and says so at /MODE. In the
+  // app there's no proxy, so it stays off.
+  fetch("MODE", { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(m => {
+    if ((m || "").trim() !== "edit") return;
+    EDITING = true;
+    api.setEditing(true);
+    if (playlistsLoaded) loadPlaylist();
+  }).catch(() => {});
   // The version, from the VERSION file served beside the page (by the proxy,
   // or packaged into the app), so it's clear which release is running.
   fetch("VERSION", { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(v => {

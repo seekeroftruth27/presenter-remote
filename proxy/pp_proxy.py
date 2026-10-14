@@ -19,6 +19,12 @@ the script (or the .exe). Then open http://<this-computer's-ip>:8080 on a phone.
 
 Only paths under /v1/ are forwarded, and only to the one ProPresenter address
 it was given, so it can't be used to reach anything else on the network.
+
+Read-only by default: only GET requests reach ProPresenter (showing slides,
+triggering items and macros are all GETs). Writes (PUT/POST/DELETE: playlist
+editing) are refused here unless the proxy is started with
+--allow-playlist-edits. Every write, refused or passed on, is recorded in
+pp-proxy-changes.log beside the exe.
 """
 
 import argparse
@@ -36,6 +42,7 @@ TIMEOUT = 8  # seconds per ProPresenter request
 MAX_BODY = 2 * 1024 * 1024  # a whole playlist PUT is far smaller than this
 ERROR_LOG = "pp-proxy-errors.log"   # next to the exe: writes ProPresenter refused
 ERROR_LOG_MAX = 512 * 1024          # start the log afresh past this size
+CHANGES_LOG = "pp-proxy-changes.log"   # every write: blocked, passed on, and the answer
 
 
 def _here():
@@ -84,6 +91,7 @@ def _lan_ip():
 
 class Handler(BaseHTTPRequestHandler):
     pp = ""        # ProPresenter base URL, set at startup
+    allow_writes = False   # --allow-playlist-edits
     web = ""       # folder holding index.html and pp.js
     server_version = "PPRemoteProxy"
 
@@ -94,6 +102,9 @@ class Handler(BaseHTTPRequestHandler):
     # -- the page ------------------------------------------------------------
     def _static(self):
         name = urlsplit(self.path).path.lstrip("/") or "index.html"
+        if name == "MODE":   # tells the page whether editing controls may be shown
+            mode = b"edit" if self.allow_writes else b"read-only"
+            return self._send(200, mode, "text/plain; charset=utf-8", cache="no-cache")
         if name == "VERSION":   # shown on the page, so it's clear which release runs
             return self._send(200, _version().encode(), "text/plain; charset=utf-8", cache="no-cache")
         if "/" in name or name.startswith("."):
@@ -114,28 +125,50 @@ class Handler(BaseHTTPRequestHandler):
         if not path.startswith("/v1/") or ".." in path:
             return self._send(404, b"not found", "text/plain")
         body = None
-        if self.command in ("PUT", "POST"):
+        if self.command in ("PUT", "POST", "DELETE"):
             length = int(self.headers.get("Content-Length") or 0)
             if length > MAX_BODY:
                 return self._send(413, b"too large", "text/plain")
             body = self.rfile.read(length)
+            if not self.allow_writes:   # read-only: nothing that changes ProPresenter's data
+                self._log_change(path, "BLOCKED (read-only proxy)", body)
+                return self._send(403, b"Playlist editing is turned off on this PP Remote proxy.",
+                                  "text/plain", cache="no-store")
         req = urllib.request.Request(self.pp + path, data=body, method=self.command)
         req.add_header("Accept", self.headers.get("Accept") or "application/json")
         if body is not None:
             req.add_header("Content-Type", self.headers.get("Content-Type") or "application/json")
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-                self._send(r.status, r.read(), r.headers.get("Content-Type") or "",
+                answer = r.read()
+                if body is not None:
+                    self._log_change(path, f"sent -> HTTP {r.status}", body)
+                self._send(r.status, answer, r.headers.get("Content-Type") or "",
                            cache="no-store")
         except urllib.error.HTTPError as e:   # pass ProPresenter's answer through
             answer = e.read()
             if body is not None:
+                self._log_change(path, f"sent -> HTTP {e.code} (refused)", body)
                 self._log_refusal(path, e.code, answer, body)
             self._send(e.code, answer, e.headers.get("Content-Type") or "text/plain",
                        cache="no-store")
         except Exception as e:                # unreachable, timed out, ...
             self._send(502, f"Can't reach ProPresenter at {self.pp}: {e}".encode(),
                        "text/plain", cache="no-store")
+
+    def _log_change(self, path, outcome, sent):
+        """Record a write (blocked or passed on) with what it carried, so any change
+        ProPresenter received can be traced afterwards."""
+        log = os.path.join(_here(), CHANGES_LOG)
+        try:
+            mode = "w" if os.path.isfile(log) and os.path.getsize(log) > ERROR_LOG_MAX else "a"
+            with open(log, mode, encoding="utf-8") as f:
+                f.write(f"=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S}  {self.command} {path}  {outcome}"
+                        f"  from {self.client_address[0]}\n")
+                f.write("Body: " + sent.decode("utf-8", "replace") + "\n\n")
+            print(f"{self.command} {path}: {outcome}")
+        except OSError:
+            pass
 
     def _log_refusal(self, path, code, answer, sent):
         """Keep a write ProPresenter refused (what was sent, what came back), so a
@@ -178,6 +211,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._forward()
 
+    def do_DELETE(self):
+        self._forward()
+
 
 class Server(ThreadingHTTPServer):
     # http.server turns on SO_REUSEADDR, which on Windows lets a second proxy
@@ -196,7 +232,11 @@ def main():
     ap.add_argument("propresenter", nargs="?", help="ProPresenter's address, e.g. 192.168.1.50:1025 "
                     "(ProPresenter: Settings > Network)")
     ap.add_argument("--port", type=int, default=int(os.environ.get("PP_PROXY_PORT", "8080")))
+    ap.add_argument("--allow-playlist-edits", action="store_true",
+                    help="let the page change playlists (add, remove, reorder, arrangements). "
+                         "Off by default: the proxy then passes on only GET requests.")
     args = ap.parse_args()
+    Handler.allow_writes = args.allow_playlist_edits
 
     saved = os.path.join(_here(), "pp-proxy.txt")
     addr = args.propresenter or os.environ.get("PP_URL")
@@ -230,6 +270,11 @@ def main():
         sys.exit(1)
     print(f"PP Remote proxy v{_version()}")
     print(f"ProPresenter: {Handler.pp}")
+    if Handler.allow_writes:
+        print(f"PLAYLIST EDITING IS ON: every change is recorded in {CHANGES_LOG}.")
+    else:
+        print("Read-only: playlists can't be changed from the remote "
+              "(start with --allow-playlist-edits to allow it).")
     print(f"On a phone on the same Wi-Fi, open:  http://{_lan_ip()}:{args.port}")
     print("(Ctrl+C to stop.)")
     try:

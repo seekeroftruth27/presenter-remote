@@ -5,3 +5,4 @@ dist/
 *.spec
 pp-proxy.txt
 pp-proxy-errors.log
+pp-proxy-changes.log

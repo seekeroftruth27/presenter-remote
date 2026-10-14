@@ -9,8 +9,8 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
     Clear slide also runs the **Speaking** macro.
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.
-- **Playlist tab:**
-  - Pick each song's **arrangement** from its own list in ProPresenter: **MASTER**
+- **Playlist tab** (read-only unless editing is switched on; see below):
+  - Each song's **arrangement** from its own list in ProPresenter: **MASTER**
     (the slides in order) first, then the named arrangements.
   - **⌄** shows the song's slides in the chosen arrangement's order, four to a row.
     The preview is view only: tapping a slide does nothing.
@@ -49,6 +49,14 @@ router) so the address doesn't change between Sundays.
 ProPresenter's API sends no CORS headers, so a web page can't call it directly.
 The proxy serves the page and forwards its `/v1/...` calls to ProPresenter. It
 forwards only `/v1/` paths, and only to that one address.
+
+**Read-only by default.** The proxy passes on only requests that read or show
+things (slides, playlist items, macros). Playlist changes (add, remove, reorder,
+arrangements) are refused, and the page hides those controls. To allow them,
+start the proxy with `--allow-playlist-edits` (for example
+`pp-remote-proxy.exe --allow-playlist-edits`). It then records every change it
+sends in `pp-proxy-changes.log` beside the exe. Editing replaces a whole playlist
+in ProPresenter, so **back up ProPresenter first** and try it on a test playlist.
 
 **Windows:** download **pp-remote-proxy-exe** from the latest *Build Windows proxy*
 run (Actions tab → the run → Artifacts) and run it. The first time, it asks for
