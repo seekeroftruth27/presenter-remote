@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.2] — 2026-10-14
+
 ### Changed
 - **Playlist editing is off by default.** During testing, ProPresenter's setup was
   damaged while playlists were being edited from the remote. Until that's
@@ -17,13 +19,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 ### Added
 - With editing allowed, the proxy records every change it sends (and every one
   it blocks) in `pp-proxy-changes.log` beside the exe.
-
-## [v1.3.1] — 2026-10-14
-
-### Changed
-- **Dragging a song** is smoother and easier to follow: the held song shrinks a
-  little and lifts, follows the finger, and the other songs slide out of its way
-  instead of jumping.
-- **Tapping a song's title** in the Playlist tab opens and closes its slide
-  preview, the same as ⌄.
 
