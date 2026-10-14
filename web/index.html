@@ -12,8 +12,8 @@
 <style>
   /* ---- phone remote for ProPresenter ---------------------------------------
      Remote: the live slide, the live item's slides, thumb-sized Prev/Next (Next
-     is the biggest target because it's pressed most). Playlist: arrangements,
-     show items, reorder, add from a library, remove. Macros: the stage team's
+     is the biggest target because it's pressed most). Playlist: arrangements
+     (shown), show items, reorder, add from a library, remove. Macros: the stage team's
      macros. All ProPresenter calls are in pp.js. */
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; height:100%; }
@@ -150,10 +150,10 @@
      remove; the slide preview opens underneath. On a phone the arrangement drops
      to a second line. */
   .song { background:#1c1c1c; border-radius:12px; padding:8px 10px; display:grid; gap:6px 8px;
-          align-items:center; grid-template-areas:"grip tog nm arr rm play" "pv pv pv pv pv pv";
+          align-items:center; grid-template-areas:"grip tog nm arr rm play" "ai ai ai ai ai ai" "pv pv pv pv pv pv";
           grid-template-columns:40px 40px minmax(0, 1fr) minmax(0, 300px) 68px 68px; }
   @media (max-width:600px) {
-    .song { grid-template-areas:"grip tog nm rm play" ". . arr arr arr" "pv pv pv pv pv";
+    .song { grid-template-areas:"grip tog nm rm play" ". . arr arr arr" "ai ai ai ai ai" "pv pv pv pv pv";
             grid-template-columns:30px 34px minmax(0, 1fr) 56px 56px; }
   }
   .tog { grid-area:tog; background:transparent; color:#aaa; padding:0; min-height:44px;
@@ -170,9 +170,19 @@
            text-align:center; white-space:pre-wrap; overflow:hidden; }
   .pv .t.pic { color:transparent; }
   .pv .note { grid-column:1 / -1; color:#888; font-size:14px; }
+  /* All the song's arrangements, for reference (tap the arrangement label). */
+  .arrs { grid-area:ai; display:flex; flex-direction:column; gap:6px; }
+  .arrs[hidden] { display:none; }
+  .arrs .a { background:#262626; border-radius:8px; padding:8px 10px; border-left:3px solid #444; }
+  .arrs .a.on { border-left-color:#22c55e; }
+  .arrs .h { font-weight:600; font-size:15px; }
+  .arrs .s { color:#aaa; font-size:14px; margin-top:2px; }
+  .arrs .note { color:#888; font-size:14px; }
+  .song .arr.open { background:#333; }
   .song .nm { grid-area:nm; font-weight:600; font-size:20px; min-width:0; overflow-wrap:anywhere; }
-  .song select, .song .other { grid-area:arr; }
-  .song select { font-size:17px; }
+  .song .arr, .song .other { grid-area:arr; }
+  .song .arr { font-size:17px; font-weight:400; color:#ccc; background:#262626; border-radius:10px; padding:8px 12px;
+               text-align:left; min-height:44px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .grip { grid-area:grip; align-self:stretch; display:flex; align-items:center; justify-content:center;
           color:#888; touch-action:none; cursor:grab; }
   .grip svg, .rm svg { width:26px; height:26px; }
@@ -722,16 +732,61 @@
       return row;
     }
 
-    // Arrangement: the song's own list (MASTER first), read from ProPresenter.
-    // Until it arrives, the entry's current one is shown and can't be changed.
-    const sel = document.createElement("select");
-    sel.setAttribute("aria-label", `Arrangement for ${it.name}`);
-    sel.add(new Option(it.arrangement || MASTER, it.arrangementUuid));
-    sel.disabled = true;
-    row.appendChild(sel);
+    // Arrangement: shown, not changed. ProPresenter gives a playlist entry its
+    // song's current arrangement and ignores any other it's sent (tested on real
+    // ProPresenter: Default, MASTER and new entries alike), so it's picked there.
+    const arrLabel = it.arrangement || MASTER;
+    const arrEl = document.createElement("button");
+    arrEl.className = "arr";
+    arrEl.textContent = arrLabel;
+    arrEl.setAttribute("aria-label", `Arrangement for ${it.name}: ${arrLabel}`);
+    row.appendChild(arrEl);
     let current = it.arrangementUuid, songData = null, songErr = null;
 
-    // ⌄ shows the slides in the chosen arrangement's order. View only.
+    // Tapping the label lists all the song's arrangements, for reference: each
+    // one's slide count and sections in order, the current one marked. MASTER is
+    // listed even when ProPresenter hides it (the song's own order).
+    const arrs = document.createElement("div");
+    arrs.className = "arrs";
+    arrs.hidden = true;
+    row.appendChild(arrs);
+    const drawArrangements = () => {
+      arrs.innerHTML = "";
+      const note = document.createElement("div");
+      note.className = "note";
+      note.textContent = isPco ? "Planning Center sets the arrangements in this playlist."
+        : "For reference. To change it, pick the arrangement for the song in ProPresenter; the playlist follows.";
+      if (!songData) {
+        note.textContent = songErr ? `Couldn't read this song: ${songErr.message}` : "Loading arrangements…";
+        arrs.appendChild(note);
+        return;
+      }
+      const list = songData.arrangements.slice();
+      if (!list.some(a => !a.name))
+        list.unshift({ uuid: "", name: "", order: songData.masterOrder, sections: songData.masterSections });
+      list.sort((a, b) => (a.name ? 1 : 0) - (b.name ? 1 : 0));   // MASTER first
+      for (const a of list) {
+        const on = a.uuid === current;
+        const el = document.createElement("div");
+        el.className = "a" + (on ? " on" : "");
+        const h = document.createElement("div");
+        h.className = "h";
+        h.textContent = `${a.name || MASTER}${on ? " (current)" : ""} · ${a.order.length} slides`;
+        const sec = document.createElement("div");
+        sec.className = "s";
+        sec.textContent = (a.sections || []).join(", ");
+        el.append(h, sec);
+        arrs.appendChild(el);
+      }
+      arrs.appendChild(note);
+    };
+    arrEl.addEventListener("click", () => {
+      arrs.hidden = !arrs.hidden;
+      arrEl.classList.toggle("open", !arrs.hidden);
+      if (!arrs.hidden) drawArrangements(); else arrs.innerHTML = "";
+    });
+
+    // ⌄ shows the slides in the arrangement's order. View only.
     const tog = document.createElement("button");
     tog.className = "tog";
     tog.innerHTML = ICON_DOWN;
@@ -775,46 +830,16 @@
 
     loadSong(it.song, fresh).then(s => {
       songData = s;
-      // MASTER is always offered first. A song that lists no unnamed arrangement
-      // gets api.MASTER_NONE (pp.js then says there's no MASTER and writes nothing).
-      sel.innerHTML = "";
-      const master = s.arrangements.find(a => !a.name);
-      const masterValue = master ? master.uuid : api.MASTER_NONE;
-      sel.add(new Option(MASTER, masterValue));
-      s.arrangements.filter(a => a.name).forEach(a => sel.add(new Option(a.name, a.uuid)));
       if (!s.arrangements.some(a => a.uuid === current)) {   // go by name instead
-        const byName = it.arrangement && s.arrangements.find(a => a.name === it.arrangement);
-        current = byName ? byName.uuid : masterValue;
+        const byName = s.arrangements.find(a => a.name === (it.arrangement || ""));
+        if (byName) current = byName.uuid;
       }
-      sel.value = current;
-      sel.disabled = isPco || !EDITING;
       if (!pv.hidden) drawPreview();
+      if (!arrs.hidden) drawArrangements();
     }, e => {
       songErr = e;
       if (!pv.hidden) drawPreview();
-    });
-
-    sel.addEventListener("change", async () => {
-      const pick = sel.value;
-      if (pick === current) return;
-      const label = sel.options[sel.selectedIndex].text;
-      row.classList.add("busy");
-      sel.disabled = true;
-      plmsg(true, `Setting "${it.name}" to ${label}…`);
-      try {
-        await api.setArrangement(playlistId, it.index, it.name, pick);
-        current = pick;
-        shownKey = "";   // the Remote grid re-reads, in case this entry is live
-        plmsg(true, `"${it.name}" now uses ${label}.`);
-        if (navigator.vibrate) navigator.vibrate(15);
-        if (!pv.hidden) drawPreview();
-      } catch (e) {
-        sel.value = current;
-        plmsg(false, e.message);
-      } finally {
-        row.classList.remove("busy");
-        sel.disabled = isPco || !EDITING;
-      }
+      if (!arrs.hidden) drawArrangements();
     });
     return row;
   }
@@ -1029,10 +1054,11 @@
     btn.disabled = true;
     plmsg(true, `Adding "${it.name}"…`);
     try {
-      await api.addToPlaylist(playlistId, it.uuid, it.name);
+      const r = await api.addToPlaylist(playlistId, it.uuid, it.name);
       if (navigator.vibrate) navigator.vibrate(15);
       await loadPlaylist();
-      plmsg(true, `Added "${it.name}" at the end. Add more, or tap Done.`);
+      plmsg(true, `Added "${it.name}" at the end, with its ${r.arrangement || MASTER} arrangement ` +
+                  `(change it in ProPresenter). Add more, or tap Done.`);
     } catch (e) {
       plmsg(false, e.message);
     } finally {
@@ -1173,7 +1199,7 @@
   }
 
   // ---- start -------------------------------------------------------------
-  // Playlist editing (add, remove, reorder, arrangements) is off unless the
+  // Playlist editing (add, remove, reorder) is off unless the
   // proxy was started with --allow-playlist-edits and says so at /MODE. In the
   // app there's no proxy, so it stays off.
   fetch("MODE", { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(m => {
