@@ -10,9 +10,11 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.
 - **Playlist tab** (read-only unless editing is switched on; see below):
-  - Each song's **arrangement** from its own list in ProPresenter: **MASTER**
-    (the slides in order) first, then the named arrangements.
-  - **⌄** shows the song's slides in the chosen arrangement's order, four to a row.
+  - Each song's **arrangement**, as set in ProPresenter (**MASTER** = the slides in
+    the order they were entered). It's shown, not changed: ProPresenter gives a
+    playlist entry its song's current arrangement and ignores any other, so pick
+    the arrangement in ProPresenter and the playlist follows.
+  - **⌄** shows the song's slides in that arrangement's order, four to a row.
     The preview is view only: tapping a slide does nothing.
   - **▶** (double-tap) puts an item on screen; it's on the right, with 🗑 to its left.
   - **≡** drag to reorder (the held song shrinks a little and the others slide
@@ -51,8 +53,8 @@ The proxy serves the page and forwards its `/v1/...` calls to ProPresenter. It
 forwards only `/v1/` paths, and only to that one address.
 
 **Read-only by default.** The proxy passes on only requests that read or show
-things (slides, playlist items, macros). Playlist changes (add, remove, reorder,
-arrangements) are refused, and the page hides those controls. To allow them,
+things (slides, playlist items, macros). Playlist changes (add, remove, reorder)
+are refused, and the page hides those controls. To allow them,
 start the proxy with `--allow-playlist-edits` (for example
 `pp-remote-proxy.exe --allow-playlist-edits`). It then records every change it
 sends in `pp-proxy-changes.log` beside the exe. Editing replaces a whole playlist
@@ -116,12 +118,12 @@ npx cap open ios    # Xcode: pick your team under Signing, then Run
 ## How editing a playlist works
 
 ProPresenter's API can't change one playlist item on its own. It can only replace
-the whole playlist. So every edit (arrangement, add, remove) works like this:
+the whole playlist. So every edit (add, remove, reorder) works like this:
 
 1. Re-read the playlist, and check the item is still the one the phone showed.
-2. Write the whole playlist back.
-3. Read it again to confirm the change took.
-4. If it didn't take, put the original back.
+2. Write the whole playlist back, once.
+3. Read it again to confirm the change took. If it didn't, the page says so and
+   sends nothing more.
 
 If ProPresenter refuses a write outright, nothing changed, and the page shows
 ProPresenter's own reason. Planning Center playlists are left read-only.
