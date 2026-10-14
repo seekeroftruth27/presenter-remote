@@ -98,10 +98,10 @@ Learned from real 4xx answers, so trust these over the published docs:
   is the song's current arrangement, or on a playlist entry that uses MASTER. Once seen it's
   kept per song (`masters`, also in localStorage `ppMasters`), because switching the song to a
   named arrangement hides it again. MASTER picked while its uuid is unknown
-  (`api.MASTER_NONE`) is sent as `arrangement_uuid ""` with `arrangement_name ""`, as another
-  remote sends every song it adds. Whether real ProPresenter takes `""` (now that `id.uuid` is
-  right) is **unconfirmed**: the old `"" → 404` was seen while `id.uuid` was still wrong. If
-  it doesn't stick, the page asks the user to pick Master once in ProPresenter.
+  (`api.MASTER_NONE`) **sends nothing**; the page asks the user to pick Master once in
+  ProPresenter. `arrangement_uuid ""` with `arrangement_name ""` was tried on real ProPresenter
+  (with `id.uuid` right): **204, but it didn't stick**. None of the 36 playlists had the
+  affected songs on Master, so there was nowhere else to learn the id.
   Sending the song's own uuid as `arrangement_uuid` was answered **204 but didn't stick**
   (seen in `pp-proxy-changes.log`): a 2xx doesn't prove ProPresenter checked a field, so
   never send invented ids.

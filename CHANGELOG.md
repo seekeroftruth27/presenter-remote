@@ -5,6 +5,12 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- Picking Master for a song that has never been on Master no longer sends
+  anything to ProPresenter: it would answer OK and ignore it. The remote now
+  says straight away to pick Master for that song once in ProPresenter. After
+  that, switching between Master and other arrangements works from the remote.
+
 ## [v1.3.6] — 2026-10-14
 
 ### Fixed

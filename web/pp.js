@@ -389,8 +389,9 @@
       // arrangement_name is kept in step with it. MASTER is the song's own slide
       // order and has a uuid of its own, but a song with only named arrangements
       // shows it only now and then (see `masters`). MASTER_NONE = MASTER picked
-      // while its uuid is unknown: the entry is sent with an empty one. (Sending
-      // the song's own uuid was answered 204 but didn't stick: never invent ids.)
+      // while its uuid is unknown: nothing is sent, since there's no id that works.
+      // An empty one and the song's own uuid were both answered 204 on real
+      // ProPresenter but didn't stick. Never invent ids.
       MASTER_NONE: "\u0000master",
       async setArrangement(id, index, expectedName, arrangementUuid) {
         const peek = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
@@ -405,15 +406,16 @@
             if (it.type === "presentation" && i.arrangement_name === "" && i.arrangement_uuid)
               seenMaster(itemPresentation(it), i.arrangement_uuid);
           });
-          // Its uuid if seen; else an empty one, the way an entry with no
-          // arrangement is sent (what another remote sends for every song added).
           arr = s.arrangements.find(a => !a.name) ||
-                (masters.has(songId) ? { uuid: masters.get(songId), name: "" } : { uuid: "", name: "" });
+                (masters.has(songId) ? { uuid: masters.get(songId), name: "" } : null);
+          if (!arr)
+            throw Object.assign(new Error(`ProPresenter doesn't let the remote switch "${expectedName}" to Master until ` +
+              `it has been on Master once. Pick Master for it once in ProPresenter; after that it works here too. ` +
+              `Nothing was changed.`), { refused: true });
         } else {
           arr = s.arrangements.find(a => a.uuid === arrangementUuid);
         }
         if (!arr) throw new Error(`That arrangement isn't in "${expectedName}" any more. Reload and try again.`);
-        const guessed = !arr.uuid;
         return this.editPlaylist(id, items => {
           checkItem(items, index, expectedName);
           const info = Object.assign({}, items[index].presentation_info || {});
@@ -427,11 +429,6 @@
             if (!arr.name && got.arrangement_name === "") seenMaster(songId, got.arrangement_uuid);
             return after.length === n && (got.arrangement_name || "") === arr.name;
           };
-        }).catch(e => {
-          if (!guessed) throw e;
-          throw Object.assign(new Error(`ProPresenter didn't switch "${expectedName}" to MASTER from here. ` +
-            `Pick Master for it once in ProPresenter; after that it works here too.` +
-            (e.refused ? " Nothing was changed." : "")), { refused: e.refused });
         });
       },
 
