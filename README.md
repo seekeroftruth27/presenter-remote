@@ -13,7 +13,9 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - Each song's **arrangement**, as set in ProPresenter (**MASTER** = the slides in
     the order they were entered). It's shown, not changed: ProPresenter gives a
     playlist entry its song's current arrangement and ignores any other, so pick
-    the arrangement in ProPresenter and the playlist follows.
+    the arrangement in ProPresenter and the playlist follows. Tapping it lists all
+    the song's arrangements for reference (MASTER included), each with its slide
+    count and sections in order, the current one marked.
   - **⌄** shows the song's slides in that arrangement's order, four to a row.
     The preview is view only: tapping a slide does nothing.
   - **▶** (double-tap) puts an item on screen; it's on the right, with 🗑 to its left.

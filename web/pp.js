@@ -114,7 +114,8 @@
 
     // A song, from GET /v1/presentation/{uuid}, cached for SONG_TTL_MS:
     //   slides: [{text, group, color}] in master order (index = thumbnail index)
-    //   arrangements: [{uuid, name, order}], order = slide indexes in play order.
+    //   arrangements: [{uuid, name, order, sections}], order = slide indexes in
+    //     play order, sections = group names in play order.
     //     "No arrangement" (the MASTER) is an arrangement with an empty name.
     //   current: uuid of the song's current arrangement.
     //   thumbs: per slide (master index), its thumbnail index, or -1 for none.
@@ -126,8 +127,9 @@
       const hit = songCache.get(uuid);
       if (!fresh && hit && Date.now() - hit.at < SONG_TTL_MS) return hit.data;
       const p = ((await getJSON(`/v1/presentation/${enc(uuid)}`)) || {}).presentation || {};
-      const slides = [], byGroup = {};
+      const slides = [], byGroup = {}, groupName = {};
       for (const g of p.groups || []) {
+        if (g.uuid) groupName[g.uuid] = g.name || "";
         const idx = [];
         for (const sl of g.slides || []) {
           idx.push(slides.length);
@@ -136,21 +138,24 @@
         if (g.uuid) byGroup[g.uuid] = idx;
       }
       const master = slides.map((_, i) => i);
+      const masterSections = (p.groups || []).map(g => g.name || "");
       const groupId = g => typeof g === "string" ? g : (g && (g.uuid || (g.id && g.id.uuid))) || "";
       const arrangements = (p.arrangements || []).map(a => {
         const { uuid: id, name } = ident(a);
         const groups = (a && a.groups) || [];
         const order = groups.length ? groups.flatMap(g => byGroup[groupId(g)] || []) : master;
         const nm = name.trim();
-        return { uuid: id, name: /^master$/i.test(nm) ? "" : nm, order: order.length ? order : master };
+        const sections = groups.map(g => groupName[groupId(g)]).filter(x => x !== undefined);
+        return { uuid: id, name: /^master$/i.test(nm) ? "" : nm, order: order.length ? order : master,
+                 sections: order.length && sections.length ? sections : masterSections };
       }).filter(a => a.uuid);
       const current = typeof p.current_arrangement === "string" ? p.current_arrangement : "";
       // MASTER (no arrangement) isn't always listed: a song with only named
       // arrangements leaves it out, but when MASTER is the song's current
       // arrangement, current_arrangement carries its uuid.
       if (!arrangements.some(a => !a.name) && current && !arrangements.some(a => a.uuid === current))
-        arrangements.unshift({ uuid: current, name: "", order: master });
-      const data = { uuid, slides, arrangements, masterOrder: master, current,
+        arrangements.unshift({ uuid: current, name: "", order: master, sections: masterSections });
+      const data = { uuid, slides, arrangements, masterOrder: master, masterSections, current,
                      thumbs: thumbIndexes(master, (arrangements.find(a => a.uuid === current) || {}).order) };
       songCache.set(uuid, { at: Date.now(), data });
       return data;
