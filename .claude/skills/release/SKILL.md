@@ -25,7 +25,9 @@ app ships separately, through TestFlight with an `ios-v*` tag (see README).
    - Write for the person running it at church, not for developers.
    - If the section is empty or stale, fill it in from `git log <last tag>..HEAD`, commit that on `main`, and continue.
 3. **Pick the version.**
-   - The argument is `patch` (fixes), `minor` (new features) or `major` (breaking changes, such as a changed proxy command line), or an exact `X.Y.Z`.
+   - **Use `patch` by default**, new features included: the user asked for one patch step per release (1.3.0 → 1.3.1 → 1.3.2 …).
+   - Use `minor` or `major` only for major changes, such as a changed proxy command line or a reworked app, and ask the user first.
+   - An exact `X.Y.Z` is also accepted.
    - The first release is `1.0.0`, from `VERSION` `0.0.0`.
 4. **Dry run, and show the user:**
    `python scripts/release.py <level> --dry-run`

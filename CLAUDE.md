@@ -14,6 +14,8 @@ README.md for features and setup, and CHANGELOG.md for the history.
 ## Builds and releases (no Mac or Windows machine needed)
 - **Windows exe:** *Build Windows proxy* (`build-proxy.yml`) builds on GitHub's Windows runners.
 - **iPhone app:** *Build iPhone app* (`build-ios.yml`) builds on GitHub's macOS runners.
+- **Version numbers:** one patch step per release (`patch`), features included, unless a change
+  is major; then ask before using `minor` / `major`.
 - **Releasing:** use the `release` skill. From a cloud session, dispatch `build-proxy.yml`
   on `main` with input `release` = `patch` / `minor` / `major` / `X.Y.Z`. That one run bumps,
   tags, builds and publishes.

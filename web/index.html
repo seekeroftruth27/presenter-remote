@@ -142,7 +142,7 @@
   #plsel { font-size:20px; padding:20px 12px; }
   #plmsg { font-size:15px; color:#8a8; min-height:1.3em; }
   #plmsg.bad { color:#e77; }
-  #items { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;
+  #items { position:relative; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;
            -webkit-overflow-scrolling:touch; }
   .hdr { font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:#888;
          margin:8px 2px 0; }
@@ -180,7 +180,11 @@
                display:flex; align-items:center; justify-content:center; }
   .play { grid-area:play; background:#166534; }
   .rm { grid-area:rm; background:#3a2323; }
-  .song.drag { outline:2px solid #f59e0b; background:#262626; }
+  /* While dragged: a little smaller and lifted, following the finger; the other
+     rows glide out of its way (see dragItem). */
+  .song.drag { position:relative; z-index:2; outline:2px solid #f59e0b; background:#262626;
+               box-shadow:0 10px 28px rgba(0, 0, 0, .55); opacity:.95; }
+  .song .nm { cursor:pointer; }
   .wide { background:#333; font-size:16px; padding:14px; flex:none; }
   #pladd { background:#166534; font-size:21px; padding:20px; }
   #adder { flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; }
@@ -759,6 +763,7 @@
         queueThumb(t, songData.uuid, i);
       }
     };
+    nm.addEventListener("click", () => tog.click());   // the title opens/closes it too
     tog.addEventListener("click", () => {
       pv.hidden = !pv.hidden;
       tog.classList.toggle("open", !pv.hidden);
@@ -831,39 +836,69 @@
   // The row follows the finger through the list (the list scrolls near its
   // edges); letting go writes the new order to ProPresenter. Rows in #items are
   // one per playlist item, so a row's position is the item's new index.
+  // The held row shrinks a little and follows the finger; the rows it passes
+  // glide into their new places (each is moved in the page, then animated from
+  // where it was), so it's easy to see what's moving where.
+  const DRAG_SCALE = 0.95, GLIDE = "transform .2s ease";
   let moving = false;
   function dragItem(e, row, playlistId, it) {
     if (moving || e.button > 0) return;
     e.preventDefault();
     const list = $("items"), pid = e.pointerId;
     const from = it.index, startNext = row.nextElementSibling;
-    let y = e.clientY;
+    // Positions are in the list's own coordinates (layout positions, which
+    // transforms don't change), so the gliding rows can't make the order flicker.
+    const listY = clientY => clientY - list.getBoundingClientRect().top + list.scrollTop;
+    let y = listY(e.clientY);
+    const grab = y - row.offsetTop;   // where on the row the finger is
     moving = true;
     row.classList.add("drag");
+    const follow = () => {
+      row.style.transition = "none";
+      row.style.transform = `translateY(${y - grab - row.offsetTop}px) scale(${DRAG_SCALE})`;
+    };
+    const glide = moveRow => {
+      const others = [...list.children].filter(k => k !== row);
+      const was = new Map(others.map(k => [k, k.offsetTop]));
+      moveRow();
+      for (const k of others) {
+        const d = was.get(k) - k.offsetTop;
+        if (!d) continue;
+        k.style.transition = "none";
+        k.style.transform = `translateY(${d}px)`;
+        k.getBoundingClientRect();   // apply that before animating back to 0
+        k.style.transition = GLIDE;
+        k.style.transform = "";
+      }
+    };
     const place = () => {
+      const mid = y - grab + row.offsetHeight / 2;   // the held row's centre
       let before = null;
       for (const k of list.children) {
         if (k === row) continue;
-        const r = k.getBoundingClientRect();
-        if (y < r.top + r.height / 2) { before = k; break; }
+        if (mid < k.offsetTop + k.offsetHeight / 2) { before = k; break; }
       }
-      if (before !== row.nextElementSibling) list.insertBefore(row, before);
+      if (before !== row.nextElementSibling) glide(() => list.insertBefore(row, before));
+      follow();
     };
+    follow();
     const scroller = setInterval(() => {   // near the top or bottom edge: scroll
-      const r = list.getBoundingClientRect(), edge = 60;
-      const d = y < r.top + edge ? -12 : y > r.bottom - edge ? 12 : 0;
-      if (d) { list.scrollTop += d; place(); }
+      const r = list.getBoundingClientRect(), edge = 60, cy = y - list.scrollTop + r.top;
+      const d = cy < r.top + edge ? -12 : cy > r.bottom - edge ? 12 : 0;
+      if (d) { list.scrollTop += d; y += d; place(); }
     }, 30);
     // Listen on the document, not the grip: moving the row through the list
     // would drop a pointer capture on it.
-    const onMove = ev => { if (ev.pointerId === pid) { y = ev.clientY; place(); } };
+    const onMove = ev => { if (ev.pointerId === pid) { y = listY(ev.clientY); place(); } };
     const onEnd = async ev => {
       if (ev.pointerId !== pid) return;
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onEnd);
       document.removeEventListener("pointercancel", onEnd);
       clearInterval(scroller);
-      row.classList.remove("drag");
+      row.style.transition = GLIDE;   // settle into its slot
+      row.style.transform = "";
+      setTimeout(() => { row.classList.remove("drag"); row.style.transition = ""; }, 200);
       // Where it landed, as an index in the whole playlist (some sections aren't
       // shown): just before the next row's item, or at the very end.
       const next = row.nextElementSibling;

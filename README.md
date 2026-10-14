@@ -15,7 +15,9 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - **⌄** shows the song's slides in the chosen arrangement's order, four to a row.
     The preview is view only: tapping a slide does nothing.
   - **▶** (double-tap) puts an item on screen; it's on the right, with 🗑 to its left.
-  - **≡** drag to reorder, and **🗑** remove.
+  - **≡** drag to reorder (the held song shrinks a little and the others slide
+    aside as it passes), and **🗑** remove. Tapping a song's title opens or closes
+    its preview, like ⌄.
   - **Add** presentations from a library (with search).
   - Items under an **Announcements** header aren't shown: they aren't the stage
     team's. They stay in the playlist, untouched.
