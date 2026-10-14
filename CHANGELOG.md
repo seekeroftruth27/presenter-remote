@@ -5,6 +5,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- The Remote tab's slides now follow the arrangement being played (for
+  example "Default" with its repeated choruses), not the song's original
+  order. The highlight, the Live panel and double-tap all use that order.
+
 ## [v1.3.4] — 2026-10-14
 
 ### Fixed

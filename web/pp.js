@@ -153,6 +153,23 @@
       return data;
     }
 
+    // The arrangement ProPresenter is playing for the live song: the active
+    // playlist entry's (re-read, and only if that entry is this song), else the
+    // song's current arrangement.
+    async function playedArrangement(uuid, from, pres) {
+      try {
+        const pl = (from && from.playlist) || {}, it = (from && from.item) || {};
+        if (pl.uuid && Number.isInteger(it.index)) {
+          const items = ((await getJSON(`/v1/playlist/${enc(pl.uuid)}`)) || {}).items || [];
+          const e = items[it.index];
+          if (e && e.type === "presentation" && itemPresentation(e) === uuid &&
+              (e.presentation_info || {}).arrangement_uuid)
+            return e.presentation_info.arrangement_uuid;
+        }
+      } catch { /* fall back to the song's own */ }
+      return typeof pres.current_arrangement === "string" ? pres.current_arrangement : "";
+    }
+
     function itemPresentation(it) {
       return (it.presentation_info || {}).presentation_uuid || it.target_uuid || "";
     }
@@ -174,12 +191,18 @@
       base,
 
       // What the preview shows: live presentation, current cue, playlist item.
-      // Slides only when the presentation differs from `have`.
+      // Slides only when `have` differs from `key` (presentation + playlist item),
+      // in the order of the arrangement being played: the playlist entry's own
+      // arrangement when the song came from a playlist, else the song's current
+      // one; MASTER (or an arrangement we can't read) = the song's own order.
+      // Each slide's `thumb` is its index in the song's own order, which is what
+      // the thumbnail endpoint goes by; the cue index (slide_index, trigger) is
+      // the slide's position in the arrangement.
       async live(have) {
         const idx = ((await getJSON("/v1/presentation/slide_index")) || {}).presentation_index || {};
         const pid = idx.presentation_id || {};
         const uuid = pid.uuid || "";
-        const out = { ok: true, uuid, name: pid.name || "", index: uuid ? idx.index : null,
+        const out = { ok: true, uuid, key: uuid, name: pid.name || "", index: uuid ? idx.index : null,
                       playlist: "", item: "", showing: !!uuid };
         // Whether a slide is on screen: the slide index keeps naming the last
         // presentation after a clear, so ask for the slide layer's state.
@@ -187,20 +210,35 @@
           const layers = await getJSON("/v1/status/layers");
           if (layers && typeof layers.slide === "boolean") out.showing = layers.slide;
         } catch { /* older ProPresenter: fall back to "a presentation is live" */ }
+        let from = null;
         try {
-          const active = ((await getJSON("/v1/playlist/active")) || {}).presentation || {};
-          out.playlist = (active.playlist || {}).name || "";
-          out.item = (active.item || {}).name || "";
+          from = ((await getJSON("/v1/playlist/active")) || {}).presentation || null;
+          out.playlist = ((from || {}).playlist || {}).name || "";
+          out.item = ((from || {}).item || {}).name || "";
         } catch { /* not from a playlist -- fine */ }
-        if (uuid && have !== uuid) {
+        if (uuid && from && from.item) {
+          const pl = from.playlist || {}, it = from.item;
+          out.key = [uuid, pl.uuid || pl.name || "", it.index, it.name || ""].join("|");
+        }
+        if (uuid && have !== out.key) {
           const pres = ((await getJSON("/v1/presentation/active")) || {}).presentation || {};
-          out.slides = [];
+          const own = [], byGroup = {};
           for (const g of pres.groups || []) {
+            const slides = [];
             for (const s of g.slides || []) {
-              out.slides.push({ group: g.name || "", color: color(g.color), label: s.label || "",
-                                text: (s.text || "").trim(), enabled: s.enabled !== false });
+              const sl = { group: g.name || "", color: color(g.color), label: s.label || "",
+                           text: (s.text || "").trim(), enabled: s.enabled !== false, thumb: own.length };
+              own.push(sl);
+              slides.push(sl);
             }
+            if (g.uuid) byGroup[g.uuid] = slides;
           }
+          const arrangement = await playedArrangement(uuid, from, pres);
+          const a = (pres.arrangements || []).find(x => ident(x).uuid === arrangement);
+          const groupId = g => typeof g === "string" ? g : (g && (g.uuid || (g.id && g.id.uuid))) || "";
+          const ordered = a && (a.groups || []).length
+            ? a.groups.flatMap(g => byGroup[groupId(g)] || []) : [];
+          out.slides = ordered.length ? ordered : own;
         }
         return out;
       },
