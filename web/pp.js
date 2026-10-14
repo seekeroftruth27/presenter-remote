@@ -117,6 +117,7 @@
     //   arrangements: [{uuid, name, order}], order = slide indexes in play order.
     //     "No arrangement" (the MASTER) is an arrangement with an empty name.
     //   current: uuid of the song's current arrangement.
+    //   thumbs: per slide (master index), its thumbnail index, or -1 for none.
     // A playlist entry must name one of these by uuid (ProPresenter answers 404
     // to anything else).
     const songCache = new Map();
@@ -163,9 +164,20 @@
       const listed = arrangements.find(a => !a.name);
       if (listed) seenMaster(uuid, listed.uuid);
       else if (masters.has(uuid)) arrangements.unshift({ uuid: masters.get(uuid), name: "", order: master });
-      const data = { uuid, slides, arrangements, masterOrder: master, current };
+      const data = { uuid, slides, arrangements, masterOrder: master, current,
+                     thumbs: thumbIndexes(master, (arrangements.find(a => a.uuid === current) || {}).order) };
       songCache.set(uuid, { at: Date.now(), data });
       return data;
+    }
+
+    // Thumbnails go by the song's CURRENT arrangement, not its own order: a song
+    // whose current arrangement is "Default" (21 cues, repeats included) has
+    // thumbnails 0..20, in that order (seen on real ProPresenter). So a slide's
+    // thumbnail is where it first comes in the current arrangement; -1 = it isn't
+    // in it (no picture, the text is shown instead).
+    function thumbIndexes(slides, current) {
+      if (!current || !current.length) return slides.map((_, i) => i);
+      return slides.map(sl => current.indexOf(sl));
     }
 
     // The arrangement ProPresenter is playing for the live song: the active
@@ -210,9 +222,9 @@
       // in the order of the arrangement being played: the playlist entry's own
       // arrangement when the song came from a playlist, else the song's current
       // one; MASTER (or an arrangement we can't read) = the song's own order.
-      // Each slide's `thumb` is its index in the song's own order, which is what
-      // the thumbnail endpoint goes by; the cue index (slide_index, trigger) is
-      // the slide's position in the arrangement.
+      // Each slide's `thumb` is its thumbnail index (see thumbIndexes; -1 = none);
+      // the cue index (slide_index, trigger) is the slide's position in the
+      // arrangement being played.
       async live(have) {
         const idx = ((await getJSON("/v1/presentation/slide_index")) || {}).presentation_index || {};
         const pid = idx.presentation_id || {};
@@ -242,17 +254,20 @@
             const slides = [];
             for (const s of g.slides || []) {
               const sl = { group: g.name || "", color: color(g.color), label: s.label || "",
-                           text: (s.text || "").trim(), enabled: s.enabled !== false, thumb: own.length };
+                           text: (s.text || "").trim(), enabled: s.enabled !== false };
               own.push(sl);
               slides.push(sl);
             }
             if (g.uuid) byGroup[g.uuid] = slides;
           }
-          const arrangement = await playedArrangement(uuid, from, pres);
-          const a = (pres.arrangements || []).find(x => ident(x).uuid === arrangement);
           const groupId = g => typeof g === "string" ? g : (g && (g.uuid || (g.id && g.id.uuid))) || "";
-          const ordered = a && (a.groups || []).length
-            ? a.groups.flatMap(g => byGroup[groupId(g)] || []) : [];
+          const inOrder = uuid => {
+            const a = (pres.arrangements || []).find(x => ident(x).uuid === uuid);
+            return a && (a.groups || []).length ? a.groups.flatMap(g => byGroup[groupId(g)] || []) : [];
+          };
+          const current = typeof pres.current_arrangement === "string" ? pres.current_arrangement : "";
+          thumbIndexes(own, inOrder(current)).forEach((t, i) => { own[i].thumb = t; });
+          const ordered = inOrder(await playedArrangement(uuid, from, pres));
           out.slides = ordered.length ? ordered : own;
         }
         return out;
