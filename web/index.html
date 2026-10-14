@@ -774,7 +774,7 @@
     loadSong(it.song, fresh).then(s => {
       songData = s;
       // MASTER is always offered first. A song that lists no unnamed arrangement
-      // gets api.MASTER_NONE (pp.js works out what to send for it).
+      // gets api.MASTER_NONE (pp.js then says there's no MASTER and writes nothing).
       sel.innerHTML = "";
       const master = s.arrangements.find(a => !a.name);
       const masterValue = master ? master.uuid : api.MASTER_NONE;

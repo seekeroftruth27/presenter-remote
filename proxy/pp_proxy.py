@@ -38,7 +38,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
-TIMEOUT = 8  # seconds per ProPresenter request
+TIMEOUT = 20  # seconds per ProPresenter request (a playlist save can be slow)
 MAX_BODY = 2 * 1024 * 1024  # a whole playlist PUT is far smaller than this
 ERROR_LOG = "pp-proxy-errors.log"   # next to the exe: writes ProPresenter refused
 ERROR_LOG_MAX = 512 * 1024          # start the log afresh past this size

@@ -39,7 +39,9 @@ believes it was one of the modify flows (whole-playlist `PUT`). Since then:
 Learned from real 4xx answers, so trust these over the published docs:
 - **Whole playlist only.** `PUT /v1/playlist/{id}` replaces the whole item list; there's no
   per-item edit. Edits are read-modify-write: re-read, check that the item at the index still has
-  the expected name, PUT, read back, and restore only if the PUT was accepted but didn't stick.
+  the expected name, PUT once, read back. If it didn't stick, say so and send nothing more: there
+  is no automatic put-back (that was a second whole-playlist PUT right after something went
+  wrong). One write at a time (`api.writing`); PUTs wait up to 20 s.
 - **4xx = refused.** Nothing changed, so don't restore, and show ProPresenter's reason.
 - **Entry shape.** GET returns this, and PUT wants the same:
   `{id:{uuid,name,index}, type, is_hidden, is_pco, presentation_info:{presentation_uuid,
@@ -77,9 +79,11 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **On air.** `live()` reads `GET /v1/status/layers` (`slide` true/false) to tell whether a
   slide is showing; the slide index keeps naming the last presentation after a clear. Falls
   back to "a presentation is live" if that request fails.
-- **MASTER for a song with only named arrangements** (`api.MASTER_NONE`): which
-  `arrangement_uuid` ProPresenter wants is **unconfirmed**; `setArrangement` tries the song's
-  own uuid, then the all-zero uuid. Check `pp-proxy-errors.log` if it's refused.
+- **MASTER for a song with only named arrangements** (`api.MASTER_NONE`, e.g. songs whose only
+  arrangement is "Default"): there's no arrangement to point at, so nothing is written and the
+  page says so. Sending the song's own uuid as `arrangement_uuid` was answered **204 but didn't
+  stick** (seen in `pp-proxy-changes.log`), so a 2xx doesn't prove ProPresenter validated a
+  field. Never send invented ids.
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
   from `/v1/macro_collections`.
 

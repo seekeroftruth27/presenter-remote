@@ -267,84 +267,75 @@
       },
 
       // Edit a playlist the only way the API allows: read it whole, change it,
-      // write it back, read it again to confirm. A write ProPresenter refuses
-      // (4xx) changed nothing; one it took that didn't stick is put back. `edit(items)` changes items in place (or throws) and
-      // returns kept(after).
+      // write it back once, read it again to confirm. `edit(items)` changes items
+      // in place (or throws) and returns kept(after). A write ProPresenter refuses
+      // (4xx) changed nothing. One it took that didn't stick is reported, and
+      // nothing more is sent: a second whole-playlist write (the old automatic
+      // put-back) is exactly what we don't want after something went wrong.
+      // One write at a time, so taps can't stack whole-playlist PUTs.
       // Playlist editing is off unless the page turns it on (it does only when the
       // proxy says it was started with --allow-playlist-edits). Every playlist
       // change goes through editPlaylist, so this is the one gate.
       editing: false,
+      writing: false,
       setEditing(on) { this.editing = !!on; },
 
       async editPlaylist(id, edit) {
         if (!this.editing) throw new Error("Playlist editing is turned off.");
-        const path = `/v1/playlist/${enc(id)}`;
-        const items = ((await getJSON(path)) || {}).items || [];
-        if (items.some(it => it.is_pco))
-          throw new Error("This playlist is linked to Planning Center; edit it there.");
-        const original = JSON.parse(JSON.stringify(items));
-        const kept = edit(items);
-        items.forEach((it, i) => { if (it.id && typeof it.id === "object") it.id.index = i; });
+        if (this.writing) throw new Error("Still saving the last change. Try again in a moment.");
+        this.writing = true;
+        try {
+          const path = `/v1/playlist/${enc(id)}`;
+          const items = ((await getJSON(path)) || {}).items || [];
+          if (items.some(it => it.is_pco))
+            throw new Error("This playlist is linked to Planning Center; edit it there.");
+          const kept = edit(items);
+          items.forEach((it, i) => { if (it.id && typeof it.id === "object") it.id.index = i; });
 
-        let ok = false;
-        try {
-          await call("PUT", path, putBody(items), 6000);
-          ok = !!kept(((await getJSON(path)) || {}).items || []);
-        } catch (e) {
-          if (e.refused) throw Object.assign(new Error(`ProPresenter refused the change (${e.message}). Nothing was changed.`), { refused: true });
-          ok = false;
+          try {
+            await call("PUT", path, putBody(items), 20000);
+          } catch (e) {
+            if (e.refused) throw Object.assign(new Error(`ProPresenter refused the change (${e.message}). Nothing was changed.`), { refused: true });
+            throw new Error(`ProPresenter didn't confirm the change (${e.message}). Reload and check the playlist before trying again.`);
+          }
+          if (!kept(((await getJSON(path)) || {}).items || []))
+            throw new Error("ProPresenter took the change but the playlist doesn't show it. Nothing else was sent; reload and check the playlist.");
+          return { ok: true };
+        } finally {
+          this.writing = false;
         }
-        if (ok) return { ok: true };
-        try {
-          await call("PUT", path, putBody(original), 6000);
-        } catch (e) {
-          throw new Error(`ProPresenter didn't take the change, and restoring it failed too (${e.message}). Check the playlist in ProPresenter.`);
-        }
-        throw new Error("ProPresenter didn't take the change; the playlist was put back as it was.");
       },
 
       // Set an entry's arrangement to one of its song's own (by uuid; the MASTER
       // is the one with an empty name). ProPresenter goes by arrangement_uuid;
-      // arrangement_name is kept in step with it. MASTER_NONE = MASTER for a song
-      // that lists no unnamed arrangement: which id ProPresenter wants then isn't
-      // known, so the likely ones are tried (a refused write changes nothing).
+      // arrangement_name is kept in step with it. MASTER_NONE = MASTER picked for
+      // a song that has only named arrangements: there's no arrangement to point
+      // at, so nothing is written. (Sending the song's own uuid there was accepted
+      // with 204 but didn't stick, so invented ids are never sent.)
       MASTER_NONE: "\u0000master",
       async setArrangement(id, index, expectedName, arrangementUuid) {
         const peek = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
         checkItem(peek, index, expectedName);
         if (peek[index].type !== "presentation") throw new Error("Only songs/presentations have arrangements");
-        const songId = itemPresentation(peek[index]);
-        const s = await song(songId, true);
-        let tries;
+        const s = await song(itemPresentation(peek[index]), true);
         if (arrangementUuid === this.MASTER_NONE) {
           const m = s.arrangements.find(a => !a.name);
-          tries = m ? [m.uuid] : [songId, "00000000-0000-0000-0000-000000000000"];
-        } else {
-          if (!s.arrangements.some(a => a.uuid === arrangementUuid))
-            throw new Error(`That arrangement isn't in "${expectedName}" any more. Reload and try again.`);
-          tries = [arrangementUuid];
+          if (!m) throw new Error(`"${expectedName}" has no MASTER arrangement in ProPresenter, only named ones. Nothing was changed.`);
+          arrangementUuid = m.uuid;
         }
-        const name = (s.arrangements.find(a => a.uuid === arrangementUuid) || { name: "" }).name;
-        let last;
-        for (const uuid of tries) {
-          try {
-            return await this.editPlaylist(id, items => {
-              checkItem(items, index, expectedName);
-              const info = Object.assign({}, items[index].presentation_info || {});
-              if (!info.presentation_uuid) info.presentation_uuid = itemPresentation(items[index]);
-              info.arrangement_name = name;
-              info.arrangement_uuid = uuid;
-              items[index].presentation_info = info;
-              const n = items.length;
-              return after => after.length === n &&
-                (((after[index] || {}).presentation_info || {}).arrangement_name || "") === name;
-            });
-          } catch (e) {
-            last = e;
-            if (!e.refused) throw e;
-          }
-        }
-        throw last;
+        const arr = s.arrangements.find(a => a.uuid === arrangementUuid);
+        if (!arr) throw new Error(`That arrangement isn't in "${expectedName}" any more. Reload and try again.`);
+        return this.editPlaylist(id, items => {
+          checkItem(items, index, expectedName);
+          const info = Object.assign({}, items[index].presentation_info || {});
+          if (!info.presentation_uuid) info.presentation_uuid = itemPresentation(items[index]);
+          info.arrangement_name = arr.name;
+          info.arrangement_uuid = arr.uuid;
+          items[index].presentation_info = info;
+          const n = items.length;
+          return after => after.length === n &&
+            (((after[index] || {}).presentation_info || {}).arrangement_name || "") === arr.name;
+        });
       },
 
       // Run the macro with this name (case and spacing ignored), if there is one.
