@@ -120,6 +120,18 @@
     // A playlist entry must name one of these by uuid (ProPresenter answers 404
     // to anything else).
     const songCache = new Map();
+
+    // MASTER's uuid per song, as seen. A song with only named arrangements shows
+    // it only while MASTER is current (current_arrangement) or on a playlist entry
+    // that uses MASTER, so once seen it's kept (on this device too).
+    const MASTERS_KEY = "ppMasters";
+    const masters = new Map();
+    try { Object.entries(JSON.parse(localStorage.getItem(MASTERS_KEY) || "{}")).forEach(([k, v]) => masters.set(k, v)); } catch { /* none kept */ }
+    function seenMaster(songId, uuid) {
+      if (!songId || !uuid || uuid === songId || masters.get(songId) === uuid) return;
+      masters.set(songId, uuid);
+      try { localStorage.setItem(MASTERS_KEY, JSON.stringify(Object.fromEntries(masters))); } catch { /* not kept */ }
+    }
     async function song(uuid, fresh) {
       const hit = songCache.get(uuid);
       if (!fresh && hit && Date.now() - hit.at < SONG_TTL_MS) return hit.data;
@@ -148,9 +160,29 @@
       // arrangement, current_arrangement carries its uuid.
       if (!arrangements.some(a => !a.name) && current && !arrangements.some(a => a.uuid === current))
         arrangements.unshift({ uuid: current, name: "", order: master });
+      const listed = arrangements.find(a => !a.name);
+      if (listed) seenMaster(uuid, listed.uuid);
+      else if (masters.has(uuid)) arrangements.unshift({ uuid: masters.get(uuid), name: "", order: master });
       const data = { uuid, slides, arrangements, masterOrder: master, current };
       songCache.set(uuid, { at: Date.now(), data });
       return data;
+    }
+
+    // The arrangement ProPresenter is playing for the live song: the active
+    // playlist entry's (re-read, and only if that entry is this song), else the
+    // song's current arrangement.
+    async function playedArrangement(uuid, from, pres) {
+      try {
+        const pl = (from && from.playlist) || {}, it = (from && from.item) || {};
+        if (pl.uuid && Number.isInteger(it.index)) {
+          const items = ((await getJSON(`/v1/playlist/${enc(pl.uuid)}`)) || {}).items || [];
+          const e = items[it.index];
+          if (e && e.type === "presentation" && itemPresentation(e) === uuid &&
+              (e.presentation_info || {}).arrangement_uuid)
+            return e.presentation_info.arrangement_uuid;
+        }
+      } catch { /* fall back to the song's own */ }
+      return typeof pres.current_arrangement === "string" ? pres.current_arrangement : "";
     }
 
     function itemPresentation(it) {
@@ -174,12 +206,18 @@
       base,
 
       // What the preview shows: live presentation, current cue, playlist item.
-      // Slides only when the presentation differs from `have`.
+      // Slides only when `have` differs from `key` (presentation + playlist item),
+      // in the order of the arrangement being played: the playlist entry's own
+      // arrangement when the song came from a playlist, else the song's current
+      // one; MASTER (or an arrangement we can't read) = the song's own order.
+      // Each slide's `thumb` is its index in the song's own order, which is what
+      // the thumbnail endpoint goes by; the cue index (slide_index, trigger) is
+      // the slide's position in the arrangement.
       async live(have) {
         const idx = ((await getJSON("/v1/presentation/slide_index")) || {}).presentation_index || {};
         const pid = idx.presentation_id || {};
         const uuid = pid.uuid || "";
-        const out = { ok: true, uuid, name: pid.name || "", index: uuid ? idx.index : null,
+        const out = { ok: true, uuid, key: uuid, name: pid.name || "", index: uuid ? idx.index : null,
                       playlist: "", item: "", showing: !!uuid };
         // Whether a slide is on screen: the slide index keeps naming the last
         // presentation after a clear, so ask for the slide layer's state.
@@ -187,20 +225,35 @@
           const layers = await getJSON("/v1/status/layers");
           if (layers && typeof layers.slide === "boolean") out.showing = layers.slide;
         } catch { /* older ProPresenter: fall back to "a presentation is live" */ }
+        let from = null;
         try {
-          const active = ((await getJSON("/v1/playlist/active")) || {}).presentation || {};
-          out.playlist = (active.playlist || {}).name || "";
-          out.item = (active.item || {}).name || "";
+          from = ((await getJSON("/v1/playlist/active")) || {}).presentation || null;
+          out.playlist = ((from || {}).playlist || {}).name || "";
+          out.item = ((from || {}).item || {}).name || "";
         } catch { /* not from a playlist -- fine */ }
-        if (uuid && have !== uuid) {
+        if (uuid && from && from.item) {
+          const pl = from.playlist || {}, it = from.item;
+          out.key = [uuid, pl.uuid || pl.name || "", it.index, it.name || ""].join("|");
+        }
+        if (uuid && have !== out.key) {
           const pres = ((await getJSON("/v1/presentation/active")) || {}).presentation || {};
-          out.slides = [];
+          const own = [], byGroup = {};
           for (const g of pres.groups || []) {
+            const slides = [];
             for (const s of g.slides || []) {
-              out.slides.push({ group: g.name || "", color: color(g.color), label: s.label || "",
-                                text: (s.text || "").trim(), enabled: s.enabled !== false });
+              const sl = { group: g.name || "", color: color(g.color), label: s.label || "",
+                           text: (s.text || "").trim(), enabled: s.enabled !== false, thumb: own.length };
+              own.push(sl);
+              slides.push(sl);
             }
+            if (g.uuid) byGroup[g.uuid] = slides;
           }
+          const arrangement = await playedArrangement(uuid, from, pres);
+          const a = (pres.arrangements || []).find(x => ident(x).uuid === arrangement);
+          const groupId = g => typeof g === "string" ? g : (g && (g.uuid || (g.id && g.id.uuid))) || "";
+          const ordered = a && (a.groups || []).length
+            ? a.groups.flatMap(g => byGroup[groupId(g)] || []) : [];
+          out.slides = ordered.length ? ordered : own;
         }
         return out;
       },
@@ -239,6 +292,11 @@
 
       async playlist(id) {
         const pl = (await getJSON(`/v1/playlist/${enc(id)}`)) || {};
+        for (const it of pl.items || []) {   // entries using MASTER show its uuid
+          const info = it.presentation_info || {};
+          if (it.type === "presentation" && info.arrangement_name === "" && info.arrangement_uuid)
+            seenMaster(itemPresentation(it), info.arrangement_uuid);
+        }
         const items = (pl.items || []).map((it, i) => ({
           index: i,
           name: (it.id || {}).name || "",
@@ -313,13 +371,11 @@
 
       // Set an entry's arrangement to one of its song's own (by uuid; the MASTER
       // is the one with an empty name). ProPresenter goes by arrangement_uuid;
-      // arrangement_name is kept in step with it. MASTER has a uuid of its own,
-      // but a song with only named arrangements lists it only while MASTER is
-      // the song's current arrangement (see song()). MASTER_NONE = MASTER picked
-      // when song() didn't find it: then a playlist entry of the same song that
-      // already uses MASTER supplies the uuid, or nothing is written. (Sending
-      // the song's own uuid was accepted with 204 but didn't stick, so invented
-      // ids are never sent.)
+      // arrangement_name is kept in step with it. MASTER is the song's own slide
+      // order and has a uuid of its own, but a song with only named arrangements
+      // shows it only now and then (see `masters`). MASTER_NONE = MASTER picked
+      // while its uuid is unknown: the entry is sent with an empty one. (Sending
+      // the song's own uuid was answered 204 but didn't stick: never invent ids.)
       MASTER_NONE: "\u0000master",
       async setArrangement(id, index, expectedName, arrangementUuid) {
         const peek = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
@@ -327,19 +383,22 @@
         if (peek[index].type !== "presentation") throw new Error("Only songs/presentations have arrangements");
         const songId = itemPresentation(peek[index]);
         const s = await song(songId, true);
+        let arr;
         if (arrangementUuid === this.MASTER_NONE) {
-          const m = s.arrangements.find(a => !a.name) ||
-            peek.filter(it => it.type === "presentation" && itemPresentation(it) === songId)
-                .map(it => it.presentation_info || {})
-                .filter(i => !i.arrangement_name && i.arrangement_uuid &&
-                             !s.arrangements.some(a => a.uuid === i.arrangement_uuid))
-                .map(i => ({ uuid: i.arrangement_uuid, name: "" }))[0];
-          if (!m) throw new Error(`The remote can't find MASTER for "${expectedName}" yet. Pick Master for it once in ProPresenter, then it works here too. Nothing was changed.`);
-          if (!s.arrangements.some(a => a.uuid === m.uuid)) s.arrangements.unshift(m);
-          arrangementUuid = m.uuid;
+          peek.forEach(it => {
+            const i = it.presentation_info || {};
+            if (it.type === "presentation" && i.arrangement_name === "" && i.arrangement_uuid)
+              seenMaster(itemPresentation(it), i.arrangement_uuid);
+          });
+          // Its uuid if seen; else an empty one, the way an entry with no
+          // arrangement is sent (what another remote sends for every song added).
+          arr = s.arrangements.find(a => !a.name) ||
+                (masters.has(songId) ? { uuid: masters.get(songId), name: "" } : { uuid: "", name: "" });
+        } else {
+          arr = s.arrangements.find(a => a.uuid === arrangementUuid);
         }
-        const arr = s.arrangements.find(a => a.uuid === arrangementUuid);
         if (!arr) throw new Error(`That arrangement isn't in "${expectedName}" any more. Reload and try again.`);
+        const guessed = !arr.uuid;
         return this.editPlaylist(id, items => {
           checkItem(items, index, expectedName);
           const info = Object.assign({}, items[index].presentation_info || {});
@@ -348,8 +407,16 @@
           info.arrangement_uuid = arr.uuid;
           items[index].presentation_info = info;
           const n = items.length;
-          return after => after.length === n &&
-            (((after[index] || {}).presentation_info || {}).arrangement_name || "") === arr.name;
+          return after => {
+            const got = (after[index] || {}).presentation_info || {};
+            if (!arr.name && got.arrangement_name === "") seenMaster(songId, got.arrangement_uuid);
+            return after.length === n && (got.arrangement_name || "") === arr.name;
+          };
+        }).catch(e => {
+          if (!guessed) throw e;
+          throw Object.assign(new Error(`ProPresenter didn't switch "${expectedName}" to MASTER from here. ` +
+            `Pick Master for it once in ProPresenter; after that it works here too.` +
+            (e.refused ? " Nothing was changed." : "")), { refused: e.refused });
         });
       },
 

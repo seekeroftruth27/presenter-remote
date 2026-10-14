@@ -334,7 +334,7 @@
   // The grid is rebuilt only when the presentation changes; each poll just moves
   // the highlight. Thumbnails are ProPresenter's own renders; until one loads (or
   // if it can't) the cell shows the slide's text instead.
-  let shownUuid = "", shownIndex = null, loadedAt = 0;
+  let shownKey = "", shownIndex = null, loadedAt = 0;   // shownKey: song + playlist entry
 
   // Thumbnails are rendered by ProPresenter, which is busy running the service,
   // so they're fetched only for cells on (or near) screen and at most
@@ -388,7 +388,7 @@
       const img = document.createElement("div");
       img.className = "img";
       img.textContent = s.text;
-      img.dataset.i = i;
+      img.dataset.i = s.thumb ?? i;   // thumbnails go by the song's own order
       thumbWatch.observe(img);
       const cap = document.createElement("div");
       cap.className = "cap";
@@ -441,7 +441,7 @@
     const slow = setTimeout(() => {
       if (liveKey === key) { img.classList.remove("pic"); img.style.backgroundImage = ""; }
     }, 700);
-    const uuid = thumbUuid, pic = new Image();
+    const uuid = thumbUuid, pic = new Image(), thumb = s && s.thumb != null ? s.thumb : index;
     pic.onload = () => {
       clearTimeout(slow);
       if (liveKey === key) { img.style.backgroundImage = `url("${pic.src}")`; img.classList.add("pic"); }
@@ -449,10 +449,10 @@
     pic.onerror = () => {
       if (api.thumbBlobUrl && !pic.dataset.retried) {
         pic.dataset.retried = "1";
-        api.thumbBlobUrl(uuid, index).then(u => { pic.src = u; }, () => {});
+        api.thumbBlobUrl(uuid, thumb).then(u => { pic.src = u; }, () => {});
       }
     };
-    pic.src = api.thumbUrl(uuid, index);
+    pic.src = api.thumbUrl(uuid, thumb);
   }
 
   // Keep the live slide on screen: if it (or, room permitting, the slide after
@@ -516,17 +516,17 @@
 
   async function poll() {
     try {
-      const j = await api.live(shownUuid);
+      const j = await api.live(shownKey);
       if (Date.now() > noteUntil) show(true, "Connected to ProPresenter");
       $("item").textContent = j.item || j.name || "Nothing showing";
       $("pl").textContent = j.playlist ? `Playlist: ${j.playlist}` : "";
       setOnAir(!!j.showing);
       if (!j.uuid) {
-        if (shownUuid) { shownUuid = ""; shownIndex = null; thumbUuid = ""; showLive(null);
+        if (shownKey) { shownKey = ""; shownIndex = null; thumbUuid = ""; showLive(null);
           $("slides").innerHTML = '<div class="empty">Nothing showing</div>'; }
         return;
       }
-      if (j.slides) { shownUuid = j.uuid; shownIndex = null; buildSlides(j.uuid, j.slides); }
+      if (j.slides) { shownKey = j.key || j.uuid; shownIndex = null; buildSlides(j.uuid, j.slides); }
       highlight(j.index);
     } catch (e) {
       show(false, `Not connected: ${e.message}`);
@@ -802,6 +802,7 @@
       try {
         await api.setArrangement(playlistId, it.index, it.name, pick);
         current = pick;
+        shownKey = "";   // the Remote grid re-reads, in case this entry is live
         plmsg(true, `"${it.name}" now uses ${label}.`);
         if (navigator.vibrate) navigator.vibrate(15);
         if (!pv.hidden) drawPreview();
@@ -1158,7 +1159,7 @@
         await next.live("");
         store.set("pp-url", url);
         api = next;
-        shownUuid = ""; shownIndex = null; playlistsLoaded = false; macrosLoaded = false;
+        shownKey = ""; shownIndex = null; playlistsLoaded = false; macrosLoaded = false;
         msg.textContent = "Connected.";
         openTab($("tab-remote"));
         poll();
