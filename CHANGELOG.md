@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.4] — 2026-10-14
+
 ### Fixed
 - Picking MASTER for a song that only has named arrangements (such as "Default")
   showed "ProPresenter didn't take the change; the playlist was put back as it
@@ -15,12 +17,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 - Safer playlist editing: when a change doesn't stick, the app tells you and
   sends nothing more. It no longer writes the old playlist back by itself. It
   also saves one change at a time and waits longer for ProPresenter to answer.
-
-## [v1.3.3] — 2026-10-14
-
-### Fixed
-- The proxy window no longer fills with an error ("'Handler' object has no
-  attribute 'path'") when something connects that isn't plain HTTP, for example
-  a browser trying `https://`. It now prints one line saying the request was
-  ignored. Those requests never reached ProPresenter either way.
 
