@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.7] — 2026-10-14
+
 ### Changed
 - The Playlist tab now shows each song's arrangement instead of offering a menu
   to change it. Tests on the real ProPresenter showed it can't be changed from
@@ -15,12 +17,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 - Tapping a song's arrangement lists all its arrangements for reference
   (Master included): how many slides each has and its sections in order, with
   the current one marked. Looking at the list doesn't change anything.
-
-## [v1.3.6] — 2026-10-14
-
-### Fixed
-- Slide pictures for songs with an arrangement such as "Default" were the
-  wrong ones for some slides (the Bridge could show a verse). ProPresenter
-  numbers a song's pictures in its current arrangement, and the Remote tab,
-  the Live panel and the playlist preview now do the same.
 
