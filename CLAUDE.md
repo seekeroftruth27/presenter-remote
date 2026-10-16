@@ -88,10 +88,9 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **On air.** `live()` reads `GET /v1/status/layers` (`slide` true/false) to tell whether a
   slide is showing; the slide index keeps naming the last presentation after a clear. Falls
   back to "a presentation is live" if that request fails.
-- **Live slides follow the played arrangement.** `live()` takes the arrangement from the
-  active playlist entry (`/v1/playlist/active` → `playlist.uuid` + `item.index`, re-read and
-  checked to be the same song), else the song's `current_arrangement`, and lists slides in
-  that arrangement's group order (MASTER = the song's own order). `slide_index` counts cues
+- **Live slides follow the played arrangement**, which is the song's `current_arrangement`
+  (a playlist entry always carries it, see above; `live()` doesn't re-read the playlist).
+  Slides are listed in that arrangement's group order (MASTER = the song's own order). `slide_index` counts cues
   in the played arrangement (**confirmed**: the first Bridge of a "Default" song played from a
   playlist gave `index 15`, `total_cues 21`). `/presentation/active/{i}/trigger` is taken to
   count the same way (not tested: it changes the screen).
