@@ -10,26 +10,27 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.
 - **Playlist tab** (read-only unless editing is switched on; see below):
-  - Each song's **arrangement**, as set in ProPresenter (**MASTER** = the slides in
+  - Each song's **arrangement**, as set in ProPresenter (**Master** = the slides in
     the order they were entered). It's shown, not changed: ProPresenter gives a
     playlist entry its song's current arrangement and ignores any other, so pick
-    the arrangement in ProPresenter and the playlist follows. Tapping it lists all
-    the song's arrangements for reference (MASTER included), each with its slide
-    count and sections in order, the current one marked.
-  - **⌄** shows the song's slides in that arrangement's order, four to a row.
-    The preview is view only: tapping a slide does nothing.
+    the arrangement in ProPresenter and the playlist follows.
+  - **⌄**, the title or the arrangement opens the song's slides in that
+    arrangement's order, four to a row, under the arrangement's details (slide
+    count, sections in order) and a note that arrangements are changed in
+    ProPresenter. The preview is view only: tapping a slide does nothing.
   - **▶** (double-tap) puts an item on screen; it's on the right, with 🗑 to its left.
   - **≡** drag to reorder (the held song shrinks a little and the others slide
-    aside as it passes), and **🗑** remove. Tapping a song's title opens or closes
-    its preview, like ⌄.
-  - **Add** presentations from a library (with search).
+    aside as it passes), and **🗑** remove.
+  - **Add** presentations from a library (with search): the library slides up
+    from the bottom, and back down on **Done**.
   - Items under an **Announcements** header aren't shown: they aren't the stage
     team's. They stay in the playlist, untouched.
 - **Macros tab:**
   - The macros in ProPresenter's **Default Collection** macro collection, in that
     collection's order, as buttons in their own colours. Change what the stage
     team sees by editing that collection in ProPresenter. The collection's name
-    is `MACRO_COLLECTION` in `web/index.html`.
+    is `MACRO_COLLECTION` in `web/index.html`; `MACROS_HIDDEN` leaves some out
+    (YOUTH MUSIC).
   - The first tap arms a macro; a second tap within 3 s runs it.
 
 > **Free to use.** If PP Remote helps your church, donations are welcome by

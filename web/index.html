@@ -141,7 +141,9 @@
   .plbar button.reload { font-size:38px; min-width:84px; min-height:68px; padding:0 12px; }
   #plsel { font-size:20px; padding:20px 12px; }
   #plmsg { font-size:15px; color:#8a8; min-height:1.3em; }
-  #plmsg.bad { color:#e77; }
+  #plmsg.bad, #addmsg.bad { color:#e77; }
+  #addmsg { font-size:15px; color:#8a8; }
+  #addmsg:empty { display:none; }
   #items { position:relative; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;
            -webkit-overflow-scrolling:touch; }
   .hdr { font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:#888;
@@ -150,10 +152,10 @@
      remove; the slide preview opens underneath. On a phone the arrangement drops
      to a second line. */
   .song { background:#1c1c1c; border-radius:12px; padding:8px 10px; display:grid; gap:6px 8px;
-          align-items:center; grid-template-areas:"grip tog nm arr rm play" "ai ai ai ai ai ai" "pv pv pv pv pv pv";
+          align-items:center; grid-template-areas:"grip tog nm arr rm play" "pv pv pv pv pv pv";
           grid-template-columns:40px 40px minmax(0, 1fr) minmax(0, 300px) 68px 68px; }
   @media (max-width:600px) {
-    .song { grid-template-areas:"grip tog nm rm play" ". . arr arr arr" "ai ai ai ai ai" "pv pv pv pv pv";
+    .song { grid-template-areas:"grip tog nm rm play" ". . arr arr arr" "pv pv pv pv pv";
             grid-template-columns:30px 34px minmax(0, 1fr) 56px 56px; }
   }
   .tog { grid-area:tog; background:transparent; color:#aaa; padding:0; min-height:44px;
@@ -170,14 +172,14 @@
            text-align:center; white-space:pre-wrap; overflow:hidden; }
   .pv .t.pic { color:transparent; }
   .pv .note { grid-column:1 / -1; color:#888; font-size:14px; }
-  /* All the song's arrangements, for reference (tap the arrangement label). */
-  .arrs { grid-area:ai; display:flex; flex-direction:column; gap:6px; }
-  .arrs[hidden] { display:none; }
-  .arrs .a { background:#262626; border-radius:8px; padding:8px 10px; border-left:3px solid #444; }
-  .arrs .a.on { border-left-color:#22c55e; }
-  .arrs .h { font-weight:600; font-size:15px; }
-  .arrs .s { color:#aaa; font-size:14px; margin-top:2px; }
-  .arrs .note { color:#888; font-size:14px; }
+  /* Above the slides: the arrangement in use (name, slide count, sections),
+     then the note that it's changed in ProPresenter. */
+  .pv .ai { grid-column:1 / -1; background:#262626; border-radius:8px; padding:8px 10px;
+            border-left:3px solid #22c55e; }
+  .pv .ai .h { font-weight:600; font-size:15px; }
+  .pv .ai .s { color:#aaa; font-size:14px; margin-top:2px; }
+  .pv .disclaimer { grid-column:1 / -1; color:#aaa; font-size:14px; font-style:italic; font-weight:700;
+                    margin:2px 0 4px; }
   .song .arr.open { background:#333; }
   .song .nm { grid-area:nm; font-weight:600; font-size:20px; min-width:0; overflow-wrap:anywhere; }
   .song .arr, .song .other { grid-area:arr; }
@@ -197,14 +199,21 @@
   .song .nm { cursor:pointer; }
   .wide { background:#333; font-size:16px; padding:14px; flex:none; }
   #pladd { background:#166534; font-size:21px; padding:20px; }
-  #adder { flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; }
+  /* The library slides up from the bottom over the playlist, and back down on Done. */
+  #adder { position:fixed; left:0; right:0; bottom:0; top:max(48px, env(safe-area-inset-top));
+           z-index:20; display:flex; flex-direction:column; gap:8px; background:#111;
+           border-radius:16px 16px 0 0; box-shadow:0 -12px 32px rgba(0, 0, 0, .6);
+           padding:14px 10px max(14px, env(safe-area-inset-bottom));
+           transform:translateY(100%); transition:transform .22s ease-out; }
+  #adder.open { transform:none; }
   #adder[hidden], #items[hidden], #pladd[hidden] { display:none; }
+  #addclose { background:#166534; color:#fff; font-size:18px; padding:0 22px; }
   #libq { font:inherit; font-size:16px; color:#eee; background:#1c1c1c; border:1px solid #333;
           border-radius:10px; padding:10px; }
   #libitems { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;
               -webkit-overflow-scrolling:touch; }
-  .libitem { background:#1c1c1c; color:#eee; text-align:left; font-weight:500; font-size:16px;
-             padding:12px; border-radius:10px; }
+  .libitem { background:#2c2c2c; color:#f2f2f2; text-align:left; font-weight:500; font-size:19px;
+             padding:15px 14px; border-radius:10px; width:100%; }
   .libmore { color:#888; font-size:13px; padding:4px 2px; }
   .song.busy { opacity:.6; }
   .other { color:#888; font-size:14px; padding:2px 12px; }
@@ -255,6 +264,7 @@
         <select id="libsel" aria-label="Library"></select>
         <button id="addclose" aria-label="Close">Done</button>
       </div>
+      <div id="addmsg"></div>
       <input id="libq" type="search" placeholder="Search this library" autocapitalize="off"
              autocorrect="off" spellcheck="false" aria-label="Search">
       <div id="libitems"></div>
@@ -295,9 +305,11 @@
   let noteUntil = 0;
   function note(ok, msg) { show(ok, msg); noteUntil = Date.now() + 5000; }
 
-  function plmsg(ok, msg) {
-    $("plmsg").textContent = msg;
-    $("plmsg").classList.toggle("bad", !ok);
+  function plmsg(ok, msg) {   // also shown on the library sheet, which covers #plmsg
+    for (const id of ["plmsg", "addmsg"]) {
+      $(id).textContent = msg;
+      $(id).classList.toggle("bad", !ok);
+    }
   }
 
   const store = {
@@ -525,7 +537,22 @@
     }
   }
 
+  // One poll at a time, answers applied in order: a poll asked for while one is
+  // running (e.g. right after a song is put on screen) runs when it finishes, so
+  // an older answer can't land after a newer one and undo it.
+  let polling = false, pollAgain = false;
   async function poll() {
+    if (polling) { pollAgain = true; return; }
+    polling = true;
+    try {
+      await pollOnce();
+    } finally {
+      polling = false;
+      if (pollAgain) { pollAgain = false; poll(); }
+    }
+  }
+
+  async function pollOnce() {
     try {
       const j = await api.live(shownKey);
       if (Date.now() > noteUntil) show(true, "Connected to ProPresenter");
@@ -645,7 +672,7 @@
   const ICON_GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
   const ICON_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
   const ICON_DOWN = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-  const MASTER = "MASTER";   // how the song's unnamed arrangement (slides in order) is shown
+  const MASTER = "Master";   // how the song's unnamed arrangement (slides in order) is shown
 
   // Songs are read two at a time, so opening a long playlist doesn't flood
   // ProPresenter (pp.js keeps each one for a while).
@@ -743,48 +770,8 @@
     row.appendChild(arrEl);
     let current = it.arrangementUuid, songData = null, songErr = null;
 
-    // Tapping the label lists all the song's arrangements, for reference: each
-    // one's slide count and sections in order, the current one marked. MASTER is
-    // listed even when ProPresenter hides it (the song's own order).
-    const arrs = document.createElement("div");
-    arrs.className = "arrs";
-    arrs.hidden = true;
-    row.appendChild(arrs);
-    const drawArrangements = () => {
-      arrs.innerHTML = "";
-      const note = document.createElement("div");
-      note.className = "note";
-      note.textContent = isPco ? "Planning Center sets the arrangements in this playlist."
-        : "For reference. To change it, pick the arrangement for the song in ProPresenter; the playlist follows.";
-      if (!songData) {
-        note.textContent = songErr ? `Couldn't read this song: ${songErr.message}` : "Loading arrangements…";
-        arrs.appendChild(note);
-        return;
-      }
-      const list = songData.arrangements.slice();
-      if (!list.some(a => !a.name))
-        list.unshift({ uuid: "", name: "", order: songData.masterOrder, sections: songData.masterSections });
-      list.sort((a, b) => (a.name ? 1 : 0) - (b.name ? 1 : 0));   // MASTER first
-      for (const a of list) {
-        const on = a.uuid === current;
-        const el = document.createElement("div");
-        el.className = "a" + (on ? " on" : "");
-        const h = document.createElement("div");
-        h.className = "h";
-        h.textContent = `${a.name || MASTER}${on ? " (current)" : ""} · ${a.order.length} slides`;
-        const sec = document.createElement("div");
-        sec.className = "s";
-        sec.textContent = (a.sections || []).join(", ");
-        el.append(h, sec);
-        arrs.appendChild(el);
-      }
-      arrs.appendChild(note);
-    };
-    arrEl.addEventListener("click", () => {
-      arrs.hidden = !arrs.hidden;
-      arrEl.classList.toggle("open", !arrs.hidden);
-      if (!arrs.hidden) drawArrangements(); else arrs.innerHTML = "";
-    });
+    // Tapping the arrangement opens the slides, like ⌄ and the title (below).
+    arrEl.addEventListener("click", () => tog.click());
 
     // ⌄ shows the slides in the arrangement's order. View only.
     const tog = document.createElement("button");
@@ -795,6 +782,8 @@
     pv.className = "pv";
     pv.hidden = true;
     row.append(tog, pv);
+    // On top: the arrangement in use (name, slide count, sections in order) and
+    // a note that arrangements are changed in ProPresenter; then the slides.
     const drawPreview = () => {
       pv.innerHTML = "";
       if (!songData) {
@@ -806,6 +795,20 @@
       }
       const arr = songData.arrangements.find(a => a.uuid === current);
       const order = arr ? arr.order : songData.slides.map((_, i) => i);
+      const info = document.createElement("div");
+      info.className = "ai";
+      const h = document.createElement("div");
+      h.className = "h";
+      h.textContent = `${arrLabel} · ${order.length} slide${order.length === 1 ? "" : "s"}`;
+      const sec = document.createElement("div");
+      sec.className = "s";
+      sec.textContent = ((arr && arr.sections) || songData.masterSections || []).join(", ");
+      info.append(h, sec);
+      const disclaimer = document.createElement("div");
+      disclaimer.className = "disclaimer";
+      disclaimer.textContent = "Changes to Arrangements cannot be made from here, you can only change " +
+                               "the Arrangement from a ProPresenter on a computer.";
+      pv.append(info, disclaimer);
       if (!order.length) {
         pv.innerHTML = '<div class="note">No slides.</div>';
         return;
@@ -825,6 +828,7 @@
     tog.addEventListener("click", () => {
       pv.hidden = !pv.hidden;
       tog.classList.toggle("open", !pv.hidden);
+      arrEl.classList.toggle("open", !pv.hidden);
       if (!pv.hidden) drawPreview(); else pv.innerHTML = "";
     });
 
@@ -835,11 +839,9 @@
         if (byName) current = byName.uuid;
       }
       if (!pv.hidden) drawPreview();
-      if (!arrs.hidden) drawArrangements();
     }, e => {
       songErr = e;
       if (!pv.hidden) drawPreview();
-      if (!arrs.hidden) drawArrangements();
     });
     return row;
   }
@@ -979,15 +981,22 @@
     $("pladd").hidden = !plEditable || !$("adder").hidden;
   }
 
+  // The library is a sheet: it slides up over the playlist and back down on Done.
+  const SHEET_MS = 220;
+  let sheetTimer = 0;
   function closeAdder() {
-    $("adder").hidden = true;
-    $("items").hidden = false;
-    syncAddButton();
+    const a = $("adder");
+    a.classList.remove("open");
+    clearTimeout(sheetTimer);
+    sheetTimer = setTimeout(() => { a.hidden = true; syncAddButton(); }, SHEET_MS);
   }
 
   async function openAdder() {
-    $("adder").hidden = false;
-    $("items").hidden = true;
+    const a = $("adder");
+    clearTimeout(sheetTimer);
+    a.hidden = false;
+    void a.offsetHeight;   // lay it out below the screen first, so it slides
+    a.classList.add("open");
     syncAddButton();
     if (libsLoaded) return showLibrary();
     const sel = $("libsel");
@@ -1087,6 +1096,7 @@
   const ARM_MS = 3000;
   const MACRO_COLLECTION = "Default Collection";
   const MACRO_COLLECTION_ALSO = ["Default"];   // also accepted, if that's the name in use
+  const MACROS_HIDDEN = ["YOUTH MUSIC"];   // in the collection, but not for the stage team
   let macrosLoaded = false, armed = null, armTimer = 0;
 
   function macmsg(ok, msg) {
@@ -1119,7 +1129,9 @@
       const col = [MACRO_COLLECTION, ...MACRO_COLLECTION_ALSO].map(n =>
         c.collections.find(x => norm(x.name) === norm(n))).find(Boolean);
       const byUuid = new Map(j.macros.map(m => [m.uuid, m]));
-      const shown = col ? col.uuids.map(u => byUuid.get(u)).filter(Boolean) : [];
+      const hidden = new Set(MACROS_HIDDEN.map(norm));
+      const shown = col ? col.uuids.map(u => byUuid.get(u))
+                             .filter(m => m && !hidden.has(norm(m.name || ""))) : [];
       if (!shown.length) {
         const empty = document.createElement("div");
         empty.className = "empty";

@@ -171,23 +171,6 @@
       return slides.map(sl => current.indexOf(sl));
     }
 
-    // The arrangement ProPresenter is playing for the live song: the active
-    // playlist entry's (re-read, and only if that entry is this song), else the
-    // song's current arrangement.
-    async function playedArrangement(uuid, from, pres) {
-      try {
-        const pl = (from && from.playlist) || {}, it = (from && from.item) || {};
-        if (pl.uuid && Number.isInteger(it.index)) {
-          const items = ((await getJSON(`/v1/playlist/${enc(pl.uuid)}`)) || {}).items || [];
-          const e = items[it.index];
-          if (e && e.type === "presentation" && itemPresentation(e) === uuid &&
-              (e.presentation_info || {}).arrangement_uuid)
-            return e.presentation_info.arrangement_uuid;
-        }
-      } catch { /* fall back to the song's own */ }
-      return typeof pres.current_arrangement === "string" ? pres.current_arrangement : "";
-    }
-
     function itemPresentation(it) {
       return (it.presentation_info || {}).presentation_uuid || it.target_uuid || "";
     }
@@ -210,9 +193,8 @@
 
       // What the preview shows: live presentation, current cue, playlist item.
       // Slides only when `have` differs from `key` (presentation + playlist item),
-      // in the order of the arrangement being played: the playlist entry's own
-      // arrangement when the song came from a playlist, else the song's current
-      // one; MASTER (or an arrangement we can't read) = the song's own order.
+      // in the order of the arrangement being played, which is always the song's
+      // current one; MASTER (or an arrangement we can't read) = the song's own order.
       // Each slide's `thumb` is its thumbnail index (see thumbIndexes; -1 = none);
       // the cue index (slide_index, trigger) is the slide's position in the
       // arrangement being played.
@@ -258,7 +240,9 @@
           };
           const current = typeof pres.current_arrangement === "string" ? pres.current_arrangement : "";
           thumbIndexes(own, inOrder(current)).forEach((t, i) => { own[i].thumb = t; });
-          const ordered = inOrder(await playedArrangement(uuid, from, pres));
+          // A playlist entry always plays its song's current arrangement (see
+          // CLAUDE.md), so that's the order; no need to read the playlist too.
+          const ordered = inOrder(current);
           out.slides = ordered.length ? ordered : own;
         }
         return out;
