@@ -519,14 +519,19 @@
 
   // Tap a slide to put it on screen. The server only triggers it if this
   // presentation is still the live one.
-  let jumping = false;
+  // Just after a jump ProPresenter can still report the slide it left, so for
+  // JUMP_SETTLE_MS that old index is ignored (anything else is taken as is).
+  const JUMP_SETTLE_MS = 2500;
+  let jumping = false, jumped = null;   // jumped: {uuid, to, from, until}
   async function jump(uuid, index, cue) {
     if (jumping || index === shownIndex) return;
     jumping = true;
     cue.classList.add("pend");
+    const from = shownIndex;
     try {
       await api.goto(uuid, index);
       if (navigator.vibrate) navigator.vibrate(15);
+      jumped = { uuid, to: index, from, until: Date.now() + JUMP_SETTLE_MS };
       highlight(index);
     } catch (e) {
       show(false, `Couldn't go to slide ${index + 1}: ${e.message}`);
@@ -578,6 +583,8 @@
           buildSlides(j.uuid, j.slides);
         }
       }
+      if (jumped && (Date.now() > jumped.until || j.uuid !== jumped.uuid || j.index === jumped.to)) jumped = null;
+      if (jumped && j.index === jumped.from) return;   // ProPresenter's answer from before the jump
       highlight(j.index);
     } catch (e) {
       show(false, `Not connected: ${e.message}`);

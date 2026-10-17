@@ -99,6 +99,8 @@ Learned from real 4xx answers, so trust these over the published docs:
   such answers `unsettled` (presentation id ≠ slide_index's, or no slides); the page doesn't
   keep them, needs two "nothing showing" answers in a row before clearing, and re-reads 2 s
   after a playlist trigger. Keeping the first answer left the grid empty or on the old song.
+  Likewise after a slide jump `slide_index` can still give the old slide: for 2.5 s
+  (`JUMP_SETTLE_MS`) the page ignores that old index (any other index is taken as is).
 - **Thumbnails go by the song's CURRENT arrangement** (confirmed on real ProPresenter): a song
   whose current arrangement is "Default" (21 cues with repeats) has thumbnails 0..20 in that
   order, while `total_cues` still says 11 (the song's own slide count). So a slide's thumbnail
