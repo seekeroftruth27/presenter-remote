@@ -356,7 +356,8 @@
   // The grid is rebuilt only when the presentation changes; each poll just moves
   // the highlight. Thumbnails are ProPresenter's own renders; until one loads (or
   // if it can't) the cell shows the slide's text instead.
-  let shownKey = "", shownIndex = null, loadedAt = 0, noneInARow = 0;   // shownKey: song + playlist entry
+  let shownKey = "", shownIndex = null, loadedAt = 0, noneInARow = 0, unsettledSince = 0;
+  const SETTLE_WAIT_MS = 3000;   // shownKey: song + playlist entry
 
   // Thumbnails are rendered by ProPresenter, which is busy running the service,
   // so they're fetched only for cells on (or near) screen and at most
@@ -572,23 +573,37 @@
         return;
       }
       noneInARow = 0;
-      if (j.unsettled && !j.slides) return;   // the previous song's answer: ask again next time
+      // An unsettled answer (another song's slides, or none yet) is waited out for
+      // SETTLE_WAIT_MS at most; if it doesn't change by then, it's taken as is.
+      // Meanwhile the slide highlight still follows on the grid already shown.
+      if (j.unsettled) {
+        if (!unsettledSince) unsettledSince = Date.now();
+        if (Date.now() - unsettledSince < SETTLE_WAIT_MS) {
+          if (j.uuid === thumbUuid) followIndex(j);
+          return;
+        }
+      }
+      unsettledSince = 0;
       if (j.slides) {
-        // A grid built from an unsettled answer (no slides yet) is shown but not
-        // kept: the next poll reads the song again.
-        shownKey = j.unsettled ? "" : (j.key || j.uuid);
+        shownKey = j.slides.length ? (j.key || j.uuid) : "";   // no slides: keep reading the song
         const sig = sl => sl.map(x => `${x.group}|${x.text}|${x.thumb}`).join("\n");
         if (j.uuid !== thumbUuid || sig(j.slides) !== sig(liveSlides)) {   // unchanged: keep it as is
           shownIndex = null;
           buildSlides(j.uuid, j.slides);
         }
       }
-      if (jumped && (Date.now() > jumped.until || j.uuid !== jumped.uuid || j.index === jumped.to)) jumped = null;
-      if (jumped && j.index === jumped.from) return;   // ProPresenter's answer from before the jump
-      highlight(j.index);
+      followIndex(j);
     } catch (e) {
       show(false, `Not connected: ${e.message}`);
     }
+  }
+
+  // Move the highlight to ProPresenter's slide, except the slide just left by a
+  // jump while that answer may still be stale.
+  function followIndex(j) {
+    if (jumped && (Date.now() > jumped.until || j.uuid !== jumped.uuid || j.index === jumped.to)) jumped = null;
+    if (jumped && j.index === jumped.from) return;   // ProPresenter's answer from before the jump
+    highlight(j.index);
   }
 
   // The Remote tab says LIVE and fades red while a slide is on screen.

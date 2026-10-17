@@ -224,9 +224,10 @@
           const pres = ((await getJSON("/v1/presentation/active")) || {}).presentation || {};
           // Right after a song is put on screen, ProPresenter can briefly answer with
           // the previous song, or the new one without its slides. Such an answer is
-          // marked `unsettled`, so the page asks again instead of keeping it.
+          // marked `unsettled`, so the page asks again instead of keeping it (for a
+          // few seconds at most: if it never changes, it's what ProPresenter has).
           const presId = ((pres.id || {}).uuid) || "";
-          if (presId && presId !== uuid) { out.unsettled = true; return out; }
+          if (presId && presId !== uuid) out.unsettled = true;   // slides still read; the page decides
           const own = [], byGroup = {};
           for (const g of pres.groups || []) {
             const slides = [];
