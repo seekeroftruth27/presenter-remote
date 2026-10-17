@@ -94,6 +94,11 @@ Learned from real 4xx answers, so trust these over the published docs:
   in the played arrangement (**confirmed**: the first Bridge of a "Default" song played from a
   playlist gave `index 15`, `total_cues 21`). `/presentation/active/{i}/trigger` is taken to
   count the same way (not tested: it changes the screen).
+- **Just after a song starts, answers can lag.** `/presentation/active` may briefly be the
+  previous song or have no slides, and `slide_index` may name no presentation. `live()` marks
+  such answers `unsettled` (presentation id ≠ slide_index's, or no slides); the page doesn't
+  keep them, needs two "nothing showing" answers in a row before clearing, and re-reads 2 s
+  after a playlist trigger. Keeping the first answer left the grid empty or on the old song.
 - **Thumbnails go by the song's CURRENT arrangement** (confirmed on real ProPresenter): a song
   whose current arrangement is "Default" (21 cues with repeats) has thumbnails 0..20 in that
   order, while `total_cues` still says 11 (the song's own slide count). So a slide's thumbnail

@@ -222,6 +222,11 @@
         }
         if (uuid && have !== out.key) {
           const pres = ((await getJSON("/v1/presentation/active")) || {}).presentation || {};
+          // Right after a song is put on screen, ProPresenter can briefly answer with
+          // the previous song, or the new one without its slides. Such an answer is
+          // marked `unsettled`, so the page asks again instead of keeping it.
+          const presId = ((pres.id || {}).uuid) || "";
+          if (presId && presId !== uuid) { out.unsettled = true; return out; }
           const own = [], byGroup = {};
           for (const g of pres.groups || []) {
             const slides = [];
@@ -244,6 +249,7 @@
           // CLAUDE.md), so that's the order; no need to read the playlist too.
           const ordered = inOrder(current);
           out.slides = ordered.length ? ordered : own;
+          if (!out.slides.length) out.unsettled = true;
         }
         return out;
       },

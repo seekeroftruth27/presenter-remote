@@ -356,7 +356,7 @@
   // The grid is rebuilt only when the presentation changes; each poll just moves
   // the highlight. Thumbnails are ProPresenter's own renders; until one loads (or
   // if it can't) the cell shows the slide's text instead.
-  let shownKey = "", shownIndex = null, loadedAt = 0;   // shownKey: song + playlist entry
+  let shownKey = "", shownIndex = null, loadedAt = 0, noneInARow = 0;   // shownKey: song + playlist entry
 
   // Thumbnails are rendered by ProPresenter, which is busy running the service,
   // so they're fetched only for cells on (or near) screen and at most
@@ -559,12 +559,25 @@
       $("item").textContent = j.item || j.name || "Nothing showing";
       $("pl").textContent = j.playlist ? `Playlist: ${j.playlist}` : "";
       setOnAir(!!j.showing);
+      // "Nothing showing" only when ProPresenter says so twice in a row: just after
+      // a song is put on screen it can briefly name no presentation.
       if (!j.uuid) {
-        if (shownKey) { shownKey = ""; shownIndex = null; thumbUuid = ""; showLive(null);
+        if (shownKey && ++noneInARow >= 2) { shownKey = ""; shownIndex = null; thumbUuid = ""; showLive(null);
           $("slides").innerHTML = '<div class="empty">Nothing showing</div>'; }
         return;
       }
-      if (j.slides) { shownKey = j.key || j.uuid; shownIndex = null; buildSlides(j.uuid, j.slides); }
+      noneInARow = 0;
+      if (j.unsettled && !j.slides) return;   // the previous song's answer: ask again next time
+      if (j.slides) {
+        // A grid built from an unsettled answer (no slides yet) is shown but not
+        // kept: the next poll reads the song again.
+        shownKey = j.unsettled ? "" : (j.key || j.uuid);
+        const sig = sl => sl.map(x => `${x.group}|${x.text}|${x.thumb}`).join("\n");
+        if (j.uuid !== thumbUuid || sig(j.slides) !== sig(liveSlides)) {   // unchanged: keep it as is
+          shownIndex = null;
+          buildSlides(j.uuid, j.slides);
+        }
+      }
       highlight(j.index);
     } catch (e) {
       show(false, `Not connected: ${e.message}`);
@@ -847,6 +860,7 @@
   }
 
   // ---- putting one playlist item on screen ---------------------------------
+  const SETTLE_MS = 2000;
   async function trigger(playlistId, it, btn) {
     btn.disabled = true;
     plmsg(true, `Showing "${it.name}"…`);
@@ -855,7 +869,9 @@
       if (navigator.vibrate) navigator.vibrate(15);
       plmsg(true, `On screen: "${it.name}".`);
       openTab($("tab-remote"));   // straight to its slides
+      shownKey = "";              // read the song afresh,
       poll();
+      setTimeout(() => { shownKey = ""; poll(); }, SETTLE_MS);   // and again once ProPresenter has settled
     } catch (e) {
       plmsg(false, e.message);
     } finally {
