@@ -201,14 +201,15 @@
       async live(have) {
         const idx = ((await getJSON("/v1/presentation/slide_index")) || {}).presentation_index || {};
         const pid = idx.presentation_id || {};
-        const uuid = pid.uuid || "";
+        let uuid = pid.uuid || "", pres = null;
         const out = { ok: true, uuid, key: uuid, name: pid.name || "", index: uuid ? idx.index : null,
                       playlist: "", item: "", showing: !!uuid };
         // Whether a slide is on screen: the slide index keeps naming the last
         // presentation after a clear, so ask for the slide layer's state.
+        let layered = false;
         try {
           const layers = await getJSON("/v1/status/layers");
-          if (layers && typeof layers.slide === "boolean") out.showing = layers.slide;
+          if (layers && typeof layers.slide === "boolean") { out.showing = layers.slide; layered = true; }
         } catch { /* older ProPresenter: fall back to "a presentation is live" */ }
         let from = null;
         try {
@@ -216,12 +217,26 @@
           out.playlist = ((from || {}).playlist || {}).name || "";
           out.item = ((from || {}).item || {}).name || "";
         } catch { /* not from a playlist -- fine */ }
+        // After switching to another song from a playlist, ProPresenter has no
+        // slide index until the slide changes (seen on real ProPresenter). The song
+        // is then the active presentation, if that's the playlist's active item;
+        // which slide is showing isn't known (index null, no highlight).
+        if (!uuid && from && from.item) {
+          const want = ((from.playlist_item || {}).presentation_info || {}).presentation_uuid || from.item.uuid || "";
+          pres = ((await getJSON("/v1/presentation/active")) || {}).presentation || {};
+          const id = pres.id || {};
+          if (want && id.uuid === want) {
+            uuid = out.uuid = id.uuid;
+            out.name = id.name || "";
+            if (!layered) out.showing = true;
+          }
+        }
         if (uuid && from && from.item) {
           const pl = from.playlist || {}, it = from.item;
           out.key = [uuid, pl.uuid || pl.name || "", it.index, it.name || ""].join("|");
         }
         if (uuid && have !== out.key) {
-          const pres = ((await getJSON("/v1/presentation/active")) || {}).presentation || {};
+          if (!pres) pres = ((await getJSON("/v1/presentation/active")) || {}).presentation || {};
           // Right after a song is put on screen, ProPresenter can briefly answer with
           // the previous song, or the new one without its slides. Such an answer is
           // marked `unsettled`, so the page asks again instead of keeping it (for a
@@ -267,13 +282,28 @@
       },
 
       // Jump to a cue of the live presentation, only if it's still the one shown.
+      // Without a slide index (just after switching songs from a playlist, see
+      // live()) ProPresenter answers 404 to /presentation/active/{i}/trigger, but
+      // the focused presentation's trigger works; it's used only when the active
+      // and focused presentations are both this song.
       async goto(uuid, index) {
         if (!Number.isInteger(index) || index < 0) throw new Error("bad index");
+        if (!uuid) throw new Error("No presentation is live.");
         const idx = ((await getJSON("/v1/presentation/slide_index")) || {}).presentation_index || {};
-        if (((idx.presentation_id || {}).uuid || "") !== (uuid || ""))
-          throw new Error("A different presentation is live now.");
-        await call("GET", `/v1/presentation/active/${index}/trigger`);
-        return { ok: true };
+        const live = (idx.presentation_id || {}).uuid || "";
+        if (live === uuid) {
+          await call("GET", `/v1/presentation/active/${index}/trigger`);
+          return { ok: true };
+        }
+        if (!live) {
+          const active = ((((await getJSON("/v1/presentation/active")) || {}).presentation || {}).id || {}).uuid || "";
+          const focused = ident(await getJSON("/v1/presentation/focused")).uuid;
+          if (active === uuid && focused === uuid) {
+            await call("GET", `/v1/presentation/focused/${index}/trigger`);
+            return { ok: true };
+          }
+        }
+        throw new Error("A different presentation is live now.");
       },
 
       thumbUrl(uuid, index) {

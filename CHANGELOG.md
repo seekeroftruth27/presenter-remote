@@ -18,6 +18,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 - The playlist note now reads "… from a computer running ProPresenter."
 
 ### Fixed
+- After switching songs from a playlist, the Remote tab showed LIVE but no
+  slides until the slide changed: ProPresenter doesn't say which slide is
+  showing at that point. The remote now shows the song's slides straight away
+  (with no slide highlighted until ProPresenter says), and double-tapping a
+  slide works then too.
 - The Remote tab could stop following ProPresenter if ProPresenter kept giving
   answers that never "settled" after a song started. The app now waits for them
   for 3 seconds at most, and the slide highlight keeps following meanwhile.
