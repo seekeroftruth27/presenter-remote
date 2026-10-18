@@ -97,8 +97,9 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **Just after a song starts, answers can lag.** `/presentation/active` may briefly be the
   previous song or have no slides, and `slide_index` may name no presentation. `live()` marks
   such answers `unsettled` (presentation id ≠ slide_index's, or no slides); the page doesn't
-  keep them, needs two "nothing showing" answers in a row before clearing, and re-reads 2 s
-  after a playlist trigger. Keeping the first answer left the grid empty or on the old song.
+  keep them for up to 3 s (`SETTLE_WAIT_MS`; after that the answer is taken as is, so it
+  can't freeze), needs two "nothing showing" answers in a row before clearing, and re-reads
+  2 s after a playlist trigger. The highlight keeps following on the grid already shown. Keeping the first answer left the grid empty or on the old song.
   Likewise after a slide jump `slide_index` can still give the old slide: for 2.5 s
   (`JUMP_SETTLE_MS`) the page ignores that old index (any other index is taken as is).
 - **Thumbnails go by the song's CURRENT arrangement** (confirmed on real ProPresenter): a song
