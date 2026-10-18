@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.11] — 2026-10-18
+
 ### Changed
 - Double-tapping ▶ in the playlist runs the MUSIC & LYRICS macro first, then
   puts the song on screen. Clear slide runs the SPEAKING macro first, then
@@ -27,12 +29,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
   answers that never "settled" after a song started. The app now waits for them
   for 3 seconds at most, and the slide highlight keeps following meanwhile.
 
-
-## [v1.3.10] — 2026-10-17
-
-### Fixed
-- After double-tapping a slide on the Remote tab, the highlight could flash back
-  to the previous slide before moving to the chosen one. ProPresenter can still
-  report the old slide for a moment; the app now ignores that for a couple of
-  seconds after a jump.
 
