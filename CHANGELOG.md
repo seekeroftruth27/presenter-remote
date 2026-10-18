@@ -5,6 +5,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- The playlist's slide preview looks like the Remote tab's slides: each slide is a
+  card with its number and group name inside it and the group colour as a bar
+  down the left.
+
 ## [v1.3.11] — 2026-10-18
 
 ### Changed

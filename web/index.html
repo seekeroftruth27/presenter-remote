@@ -172,12 +172,18 @@
   .pv { grid-area:pv; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px;
         padding-top:4px; }
   .pv[hidden] { display:none; }
-  .pv .t { aspect-ratio:16 / 9; background:#000 center / contain no-repeat; border-radius:4px;
-           border-left:3px solid var(--gc, #333); display:flex; align-items:center;
-           justify-content:center; padding:2px; font-size:9px; line-height:1.2; color:#ccc;
-           text-align:center; white-space:pre-wrap; overflow:hidden; }
+  /* Each slide is a card like on the Remote tab: picture, then number and group name
+     inside it, with the group colour as a bar down the left. */
+  .pv .pc { position:relative; min-width:0; background:#1c1c1c; border-radius:6px; overflow:hidden; }
+  .pv .t { aspect-ratio:16 / 9; background:#000 center / contain no-repeat; display:flex;
+           align-items:center; justify-content:center; padding:2px; font-size:9px; line-height:1.2;
+           color:#ccc; text-align:center; white-space:pre-wrap; overflow:hidden; }
   .pv .t.pic { color:transparent; }
-  .pv .pc { min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .pv .cap { display:flex; gap:5px; align-items:center; padding:3px 6px 4px; color:#aaa;
+             font-size:var(--grp-size); line-height:1.3; }
+  .pv .n { color:#666; }
+  .pv .cap .grp { flex:1; min-width:0; }
+  .pv .bar { position:absolute; left:0; top:0; bottom:0; width:4px; }
   /* Slide group names: one size on the Remote grid and in the playlist preview. */
   .pv .grp, .cue .grp { font-size:var(--grp-size); color:#bbb; overflow:hidden;
                         text-overflow:ellipsis; white-space:nowrap; }
@@ -887,22 +893,33 @@
         pv.innerHTML = '<div class="note">No slides.</div>';
         return;
       }
-      for (const i of order) {
+      order.forEach((i, k) => {
         const s = songData.slides[i] || {};
         const cell = document.createElement("div");
         cell.className = "pc";
         const t = document.createElement("div");
         t.className = "t";
         t.textContent = s.text || s.group || "";
-        if (s.color) t.style.setProperty("--gc", s.color);
-        const g = document.createElement("div");
+        const cap = document.createElement("div");
+        cap.className = "cap";
+        const n = document.createElement("span");
+        n.className = "n";
+        n.textContent = k + 1;
+        const g = document.createElement("span");
         g.className = "grp";
         g.textContent = s.group || "";
-        cell.append(t, g);
+        cap.append(n, g);
+        cell.append(t, cap);
+        if (s.color) {
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          bar.style.background = s.color;
+          cell.appendChild(bar);
+        }
         pv.appendChild(cell);
         const th = songData.thumbs ? songData.thumbs[i] : i;
         if (th >= 0) queueThumb(t, songData.uuid, th);
-      }
+      });
     };
     nm.addEventListener("click", () => tog.click());   // the title opens/closes it too
     tog.addEventListener("click", () => {
