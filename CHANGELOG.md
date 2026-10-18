@@ -5,33 +5,10 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.12] — 2026-10-18
+
 ### Changed
 - The playlist's slide preview looks like the Remote tab's slides: each slide is a
   card with its number and group name inside it and the group colour as a bar
   down the left.
-
-## [v1.3.11] — 2026-10-18
-
-### Changed
-- Double-tapping ▶ in the playlist runs the MUSIC & LYRICS macro first, then
-  puts the song on screen. Clear slide runs the SPEAKING macro first, then
-  clears. If a macro is missing, the rest still happens and the app says so.
-- Remote tab: the song's arrangement is shown under the playlist
-  ("Arrangement: …"). The text beside the live slide is larger: double size or
-  more when it fits beside the picture, showing up to 6 whole lines of lyrics,
-  never smaller than before.
-- Slide group names are larger, the same size on the Remote tab and in the
-  playlist's slide preview, which now shows them under each slide too.
-- The playlist note now reads "… from a computer running ProPresenter."
-
-### Fixed
-- After switching songs from a playlist, the Remote tab showed LIVE but no
-  slides until the slide changed: ProPresenter doesn't say which slide is
-  showing at that point. The remote now shows the song's slides straight away
-  (with no slide highlighted until ProPresenter says), and double-tapping a
-  slide works then too.
-- The Remote tab could stop following ProPresenter if ProPresenter kept giving
-  answers that never "settled" after a song started. The app now waits for them
-  for 3 seconds at most, and the slide highlight keeps following meanwhile.
-
 
