@@ -245,6 +245,10 @@
             return a && (a.groups || []).length ? a.groups.flatMap(g => byGroup[groupId(g)] || []) : [];
           };
           const current = typeof pres.current_arrangement === "string" ? pres.current_arrangement : "";
+          // Its name, for the Remote tab ("" = MASTER, which may not be listed at all).
+          const playing = (pres.arrangements || []).find(x => ident(x).uuid === current);
+          const pname = playing ? ident(playing).name.trim() : "";
+          out.arrangement = /^master$/i.test(pname) ? "" : pname;
           thumbIndexes(own, inOrder(current)).forEach((t, i) => { own[i].thumb = t; });
           // A playlist entry always plays its song's current arrangement (see
           // CLAUDE.md), so that's the order; no need to read the playlist too.

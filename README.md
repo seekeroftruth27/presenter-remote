@@ -6,7 +6,7 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - **Live** panel: the slide on screen now (thumbnail, "Slide n of N", group, text).
   - **Preview** of the live item's slides, with a 1–5 column zoom. The grid follows the live slide, and you **double-tap** a slide to show it (a single tap does nothing).
   - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** beside the zoom.
-    Clear slide also runs the **Speaking** macro.
+    Clear slide runs the **SPEAKING** macro first, then clears.
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.
 - **Playlist tab** (read-only unless editing is switched on; see below):
@@ -18,7 +18,8 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
     arrangement's order, four to a row, under the arrangement's details (slide
     count, sections in order) and a note that arrangements are changed in
     ProPresenter. The preview is view only: tapping a slide does nothing.
-  - **▶** (double-tap) puts an item on screen; it's on the right, with 🗑 to its left.
+  - **▶** (double-tap) runs the **MUSIC & LYRICS** macro, then puts the item on screen;
+    it's on the right, with 🗑 to its left.
   - **≡** drag to reorder (the held song shrinks a little and the others slide
     aside as it passes), and **🗑** remove.
   - **Add** presentations from a library (with search): the library slides up
