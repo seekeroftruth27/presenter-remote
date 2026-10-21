@@ -38,48 +38,44 @@
   /* live preview: the active presentation's slides, current one ringed */
   .nowbar { display:flex; align-items:center; gap:12px; }
   #now { display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; }
-  /* Thumbnail zoom: 1-5 columns; right = bigger slides (fewer columns). */
-  .zoom { display:flex; align-items:center; gap:6px; flex:none; color:#888; font-size:14px; }
-  .zoom input { width:96px; accent-color:#f59e0b; }
   #now .item { font-weight:600; font-size:24px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #now .pl { font-size:16px; color:#888; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  /* Live panel: the slide on screen right now, big, whatever the grid is doing. */
-  .live { display:flex; gap:10px; align-items:stretch; background:#1c1c1c; border-radius:12px;
-          padding:8px; border-left:4px solid var(--gc, #f59e0b); flex:none; }
-  .live[hidden] { display:none; }
-  .limg { width:46%; flex:none; aspect-ratio:16 / 9; align-self:flex-start; border-radius:6px; outline:2px solid #f59e0b;
-          background:#000 center / contain no-repeat; display:flex; align-items:center;
-          justify-content:center; padding:4px; font-size:10px; line-height:1.2; color:#ccc;
-          text-align:center; white-space:pre-wrap; overflow:hidden; }
-  .limg.pic { color:transparent; }
-  /* Next to the picture: --ls = 1 is twice the old sizes. fitLive picks the largest
-     size that fits the picture's height (1.5 at most; past the smallest the panel grows);
-     up to 6 whole lines of lyrics (LIVE_LINES). */
-  .linfo { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; --ls:1; }
-  .lhdr { font-size:calc(22px * var(--ls)); font-weight:700; letter-spacing:.08em; color:#f59e0b; }
-  .lgrp { font-weight:600; font-size:calc(30px * var(--ls)); line-height:1.2; overflow:hidden;
+  /* Under the song, playlist and arrangement: "LIVE · Slide n of N" and the group. */
+  .lhdr { font-size:22px; font-weight:700; letter-spacing:.08em; color:#f59e0b; margin-top:4px; }
+  .lhdr[hidden] { display:none; }
+  .lgrp { font-weight:600; font-size:30px; line-height:1.2; overflow:hidden;
           text-overflow:ellipsis; white-space:nowrap; }
-  .ltext { font-size:calc(26px * var(--ls)); line-height:1.25; color:#ddd; white-space:pre-wrap;
-           overflow-wrap:anywhere; }
-  #slides { flex:1; min-height:120px; overflow-y:auto; -webkit-overflow-scrolling:touch;
-            --cols:2; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr));
-            gap:calc(14px - var(--cols) * 2px); align-content:start;
-            grid-auto-rows:max-content;   /* full-size cells that scroll, never squeezed to fit */
-            container-type:size;          /* so a cell can be capped to the visible height below */
-            padding:3px; }
+  .lgrp:empty { display:none; }
+  /* Live panel: the slide on screen right now, as big as the space allows (full
+     width, or full height when that's the tighter one). */
+  .live { flex:1; min-height:0; container-type:size; display:flex; align-items:flex-start;
+          justify-content:center; }
+  .live[hidden] { display:none; }
+  .limg { width:min(100cqw, 100cqh * 16 / 9); aspect-ratio:16 / 9; border-radius:8px;
+          outline:3px solid var(--gc, #f59e0b); background:#000 center / contain no-repeat;
+          display:flex; align-items:center; justify-content:center; padding:8px;
+          font-size:18px; line-height:1.25; color:#ccc; text-align:center; white-space:pre-wrap;
+          overflow:hidden; }
+  .limg.pic { color:transparent; }
+  /* The live song's slides: a carousel along the bottom, five across, the live
+     one in the middle (follow); scrolling is free and doesn't change the slide. */
+  #slides { flex:none; position:relative; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden;
+            -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:3px 0 4px; }
+  #slides::-webkit-scrollbar { display:none; }
+  /* End spacers, so the first and last slides can sit in the middle too. */
+  #slides::before, #slides::after { content:""; flex:none; width:calc((100% - 24px) * .4 + 6px); }
+  #slides .cue { flex:none; width:calc((100% - 24px) / 5); }
   .empty { color:#555; font-style:italic; grid-column:1 / -1; text-align:center; padding:24px 0; }
+  #slides .empty { flex:1; padding:16px 0; }
   .cue { position:relative; background:#1c1c1c; border-radius:8px; overflow:hidden;
          outline:3px solid transparent; outline-offset:0; }
   .cue .img { aspect-ratio:16 / 9; background:#000 center / contain no-repeat;
               display:flex; align-items:center; justify-content:center; padding:4px;
-              font-size:calc(18px / var(--cols)); line-height:1.2; color:#ccc; text-align:center;
+              font-size:8px; line-height:1.2; color:#ccc; text-align:center;
               white-space:pre-wrap; overflow:hidden; }
   .cue .img.pic { color:transparent; }
-  /* A cell never taller than the visible grid (big zoom in landscape), so the live
-     slide can always be shown whole; the picture letterboxes inside it. */
-  .cue .img { max-height:calc(100cqh - 40px); margin-inline:auto; }
   .cue .cap { display:flex; gap:6px; align-items:center; padding:5px 8px 6px;
-              font-size:calc(9px + 6px / var(--cols));
+              font-size:13px;
               line-height:1.3; color:#aaa; }
   .cue .n { color:#666; }
   .cue .grp { flex:1; }
@@ -91,8 +87,6 @@
   .cue.on { outline-color:#f59e0b; }
   .cue.on .cap { background:#f59e0b; color:#111; }
   .cue.on .n { color:#111; }
-  #slides.dense .cue .grp { display:none; }        /* 4-5 columns: just the number */
-  #slides.dense .cue .cap { padding:2px 5px 3px; justify-content:center; }
   .pad { display:grid; grid-template-columns:1fr 2fr; gap:12px; height:110px; flex:none; }
   .pad button { font-size:clamp(22px, 6vw, 44px); font-weight:800; letter-spacing:.04em; white-space:nowrap; }
   button { border:0; border-radius:14px; color:#fff; font:600 18px/1 inherit;
@@ -105,8 +99,9 @@
   /* Clear slide sits in the top bar, small and quiet: it's needed, but rarely. */
   #clear-slide { flex:none; min-height:48px; padding:0 14px; background:#2a2a2a; color:#bbb;
                  font-size:15px; font-weight:600; border-radius:12px; }
-  @media (max-width:600px) {   /* phone: title on its own line, slider and Clear slide below */
-    .nowbar { flex-wrap:wrap; row-gap:6px; } #now { flex-basis:100%; } .zoom { margin-right:auto; }
+  @media (max-width:600px) {   /* phone: title on its own line, Clear slide below */
+    .nowbar { flex-wrap:wrap; row-gap:6px; } #now { flex-basis:100%; } #clear-slide { margin-left:auto; }
+    .cue .cap { padding:3px 4px 4px; }
   }
 
   /* macros tab: one button per ProPresenter macro, in its colour. First tap arms
@@ -247,19 +242,13 @@
     <div id="state">Connecting…</div>
     <div class="nowbar">
       <div id="now"><div class="item" id="item">—</div><div class="pl" id="pl"></div>
-        <div class="pl" id="arrname"></div></div>
-      <label class="zoom" title="Slide size"><span aria-hidden="true">▫</span>
-        <input id="zoom" type="range" min="1" max="5" step="1" value="4" aria-label="Slide size">
-        <span aria-hidden="true">◻</span></label>
+        <div class="pl" id="arrname"></div>
+        <div class="lhdr" id="livehdr" hidden>LIVE · <span id="livepos"></span></div>
+        <div id="livegrp" class="lgrp"></div></div>
       <button id="clear-slide" data-act="clear-slide">Clear slide</button>
     </div>
     <div id="live" class="live" hidden>
       <div id="liveimg" class="limg"></div>
-      <div class="linfo">
-        <div class="lhdr">LIVE · <span id="livepos"></span></div>
-        <div id="livegrp" class="lgrp"></div>
-        <div id="livetext" class="ltext"></div>
-      </div>
     </div>
     <div id="slides"><div class="empty">Nothing showing</div></div>
     <div class="pad">
@@ -462,40 +451,18 @@
 
   // The Live panel: the on-screen slide's thumbnail (fetched straight away; it is
   // the one picture that matters), its position, group and text.
-  // Fit the text next to the live picture to the picture's height: the largest
-  // size (in steps of 0.05) at which it all fits, up to 1.5 (three times the old
-  // sizes). Short lyrics come out at double size or more; up to LIVE_LINES whole lines
-  // are shown, smaller if need be but never below the old sizes; past that the panel
-  // grows taller.
-  const LIVE_TEXT_MAX = 1.5;
-  const LIVE_LINES = 6;   // lyric lines shown, each whole
-  const LIVE_TEXT_MIN = 0.5;
-  const isPhone = () => matchMedia("(max-width:600px)").matches;
-  function fitLive() {
-    const info = document.querySelector("#live .linfo");
-    // A phone's picture is small, so the text there gets a quarter of the screen.
-    const room = Math.max($("liveimg").offsetHeight, isPhone() ? Math.round(innerHeight * 0.25) : 0);
-    if ($("live").hidden || !room) return;
-    const fits = ls => { info.style.setProperty("--ls", ls); return info.scrollHeight <= room; };
-    let lo = LIVE_TEXT_MIN * 20, hi = LIVE_TEXT_MAX * 20;   // in 0.05 steps
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      if (fits(mid / 20)) lo = mid; else hi = mid - 1;
-    }
-    info.style.setProperty("--ls", lo / 20);
-  }
-  window.addEventListener("resize", () => fitLive());
-
   function showLive(index) {
     const panel = $("live"), s = liveSlides[index];
-    if (index == null || !thumbUuid) { panel.hidden = true; liveKey = ""; return; }
+    if (index == null || !thumbUuid) {
+      panel.hidden = true; liveKey = ""; $("livehdr").hidden = true; $("livegrp").textContent = "";
+      return;
+    }
     panel.hidden = false;
+    $("livehdr").hidden = false;
     $("livepos").textContent = liveSlides.length && index < liveSlides.length
       ? `Slide ${index + 1} of ${liveSlides.length}` : `Slide ${index + 1}`;
     $("livegrp").textContent = s ? (s.label || s.group || "") : "";
-    $("livetext").textContent = s ? s.text.split("\n").slice(0, LIVE_LINES).join("\n") : "";
     panel.style.setProperty("--gc", (s && s.color) || "#f59e0b");
-    fitLive();
     const key = `${thumbUuid}/${index}`;
     if (key === liveKey) return;
     liveKey = key;
@@ -521,43 +488,16 @@
     pic.src = api.thumbUrl(uuid, thumb);
   }
 
-  // Keep the live slide on screen: if it (or, room permitting, the slide after
-  // it) is outside the grid's visible area, scroll just enough to bring it in.
-  // Runs when the slide changes, the zoom changes or the screen rotates; in
-  // between, the operator can scroll around freely. It jumps rather than glides:
-  // an animated scroll on every slide change is distracting on stage.
+  // Keep the live slide in the middle of the carousel. Runs when the slide changes
+  // or the screen rotates; in between, the operator can scroll freely (that never
+  // changes the slide). It jumps rather than glides: an animated scroll on every
+  // slide change is distracting on stage.
   function follow() {
-    const grid = $("slides"), cues = grid.querySelectorAll(".cue");
-    const cur = cues[shownIndex];
+    const strip = $("slides"), cur = strip.querySelectorAll(".cue")[shownIndex];
     if (!cur) return;
-    const nxt = cues[shownIndex + 1] || cur;
-    const top0 = grid.getBoundingClientRect().top - grid.scrollTop;
-    const curTop = cur.getBoundingClientRect().top - top0;
-    const curBottom = cur.getBoundingClientRect().bottom - top0;
-    const nxtBottom = nxt.getBoundingClientRect().bottom - top0;
-    const view = grid.clientHeight, pad = 8, st = grid.scrollTop;
-    let target = st;
-    if (curTop - pad < st || curBottom + pad > st + view) {
-      target = curTop - pad;                               // live slide off screen: bring it in
-    }
-    if (nxtBottom + pad > target + view) {                 // and show the next one if it fits
-      target = Math.min(curTop - pad, nxtBottom + pad - view);
-    }
-    target = Math.max(0, target);
-    if (Math.abs(target - st) > 1) grid.scrollTop = target;
+    const target = cur.offsetLeft - (strip.clientWidth - cur.offsetWidth) / 2;
+    if (Math.abs(strip.scrollLeft - target) > 1) strip.scrollLeft = target;
   }
-
-  // Zoom: the slider picks the column count (right = bigger slides = fewer columns).
-  function setZoom(z) {
-    z = Math.min(5, Math.max(1, Number(z) || 4));
-    const cols = 6 - z, grid = $("slides");
-    grid.style.setProperty("--cols", cols);
-    grid.classList.toggle("dense", cols >= 4);
-    $("zoom").value = z;
-    store.set("pp-zoom", String(z));
-    follow();   // the live slide moved with the reflow; put it back in view
-  }
-  $("zoom").addEventListener("input", e => setZoom(e.target.value));
   window.addEventListener("resize", () => follow());
 
   // Tap a slide to put it on screen. The server only triggers it if this
@@ -1332,7 +1272,6 @@
     if (/^[0-9][0-9A-Za-z.+-]{0,30}$/.test(v))
       document.querySelectorAll(".appver").forEach(e => { e.textContent = `PP Remote v${v}`; });
   }).catch(() => {});
-  setZoom(store.get("pp-zoom") || 4);
   const lastTab = $(store.get("pp-tab") || "tab-remote");
   if (APP && !store.get("pp-url")) openTab($("tab-settings"));   // first run
   else if (lastTab && !lastTab.hidden) openTab(lastTab);
