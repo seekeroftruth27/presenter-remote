@@ -164,7 +164,7 @@
   .tog svg { width:24px; height:24px; transition:transform .15s; }
   .tog.open svg { transform:rotate(180deg); }
   /* Slide preview: view only (tapping does nothing), four to a row. */
-  .pv { grid-area:pv; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px;
+  .pv { grid-area:pv; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px;
         padding-top:4px; }
   .pv[hidden] { display:none; }
   /* Each slide is a card like on the Remote tab: picture, then number and group name
@@ -218,9 +218,12 @@
            transform:translateY(100%); transition:transform .22s ease-out; }
   #adder.open { transform:none; }
   #adder[hidden], #items[hidden], #pladd[hidden] { display:none; }
-  #addclose { background:#166534; color:#fff; font-size:18px; padding:0 22px; }
-  #libq { font:inherit; font-size:16px; color:#eee; background:#1c1c1c; border:1px solid #333;
-          border-radius:10px; padding:10px; }
+  /* Library, Done and Search: one height, larger text. */
+  #libsel, #addclose, #libq { height:64px; font-size:20px; }
+  #libsel { padding:0 12px; }
+  #addclose { background:#166534; color:#fff; padding:0 24px; }
+  #libq { font-family:inherit; color:#eee; background:#1c1c1c; border:1px solid #333;
+          border-radius:10px; padding:0 14px; flex:none; }
   #libitems { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;
               -webkit-overflow-scrolling:touch; }
   .libitem { background:#2c2c2c; color:#f2f2f2; text-align:left; font-weight:500; font-size:19px;
@@ -875,6 +878,7 @@
       });
     };
     nm.addEventListener("click", () => tog.click());   // the title opens/closes it too
+    pv.addEventListener("click", () => tog.click());   // and so does a tap anywhere in it
     tog.addEventListener("click", () => {
       pv.hidden = !pv.hidden;
       tog.classList.toggle("open", !pv.hidden);

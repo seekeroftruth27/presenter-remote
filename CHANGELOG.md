@@ -14,6 +14,10 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 - The big picture on the Remote tab shows the stage screen (the layout on
   ProPresenter's first stage screen) when ProPresenter provides that picture, and
   the audience picture otherwise. The carousel keeps the audience pictures.
+- Playlist tab: the slide preview shows three slides per row, and tapping
+  anywhere in an open preview closes it, like tapping the title.
+- "Add from library": the Library list, Done and Search are the same height, with
+  larger text.
 
 ## [v1.3.12] — 2026-10-18
 

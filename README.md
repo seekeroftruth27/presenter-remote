@@ -19,7 +19,7 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
     playlist entry its song's current arrangement and ignores any other, so pick
     the arrangement in ProPresenter and the playlist follows.
   - **⌄**, the title or the arrangement opens the song's slides in that
-    arrangement's order, four to a row, under the arrangement's details (slide
+    arrangement's order, three to a row, under the arrangement's details (slide
     count, sections in order) and a note that arrangements are changed in
     ProPresenter. The preview is view only: tapping a slide does nothing.
   - **▶** (double-tap) runs the **MUSIC & LYRICS** macro, then puts the item on screen;
