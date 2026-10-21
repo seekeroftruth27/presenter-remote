@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.13] — 2026-10-21
+
 ### Changed
 - Remote tab, new layout: "LIVE · Slide n of N" and the slide's group now sit under
   the arrangement; the live slide's picture fills the width (the text beside it is
@@ -18,11 +20,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
   anywhere in an open preview closes it, like tapping the title.
 - "Add from library": the Library list, Done and Search are the same height, with
   larger text.
-
-## [v1.3.12] — 2026-10-18
-
-### Changed
-- The playlist's slide preview looks like the Remote tab's slides: each slide is a
-  card with its number and group name inside it and the group colour as a bar
-  down the left.
 
