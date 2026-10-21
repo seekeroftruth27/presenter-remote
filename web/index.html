@@ -473,20 +473,33 @@
     const slow = setTimeout(() => {
       if (liveKey === key) { img.classList.remove("pic"); img.style.backgroundImage = ""; }
     }, 700);
-    const uuid = thumbUuid, pic = new Image(), thumb = s && s.thumb != null ? s.thumb : index;
-    if (thumb < 0) { clearTimeout(slow); img.classList.remove("pic"); img.style.backgroundImage = ""; return; }
-    pic.onload = () => {
-      clearTimeout(slow);
-      if (liveKey === key) { img.style.backgroundImage = `url("${pic.src}")`; img.classList.add("pic"); }
+    // The stage screen's picture when ProPresenter gives one (it can lag a moment
+    // behind the slide, so it's fetched again shortly after); else the audience one.
+    const uuid = thumbUuid, thumb = s && s.thumb != null ? s.thumb : index;
+    const show = src => { clearTimeout(slow); if (liveKey === key) { img.style.backgroundImage = `url("${src}")`; img.classList.add("pic"); } };
+    const load = (url, blob, onFail) => {
+      const pic = new Image();
+      pic.onload = () => show(pic.src);
+      pic.onerror = () => {
+        if (blob && !pic.dataset.retried) { pic.dataset.retried = "1"; blob().then(u => { pic.src = u; }, onFail); }
+        else onFail();
+      };
+      pic.src = url;
     };
-    pic.onerror = () => {
-      if (api.thumbBlobUrl && !pic.dataset.retried) {
-        pic.dataset.retried = "1";
-        api.thumbBlobUrl(uuid, thumb).then(u => { pic.src = u; }, () => {});
-      }
+    const audience = () => {
+      if (thumb < 0) { clearTimeout(slow); img.classList.remove("pic"); img.style.backgroundImage = ""; return; }
+      load(api.thumbUrl(uuid, thumb), api.thumbBlobUrl && (() => api.thumbBlobUrl(uuid, thumb)), () => {});
     };
-    pic.src = api.thumbUrl(uuid, thumb);
+    api.stageLayout().then(layout => {
+      if (liveKey !== key) return;
+      if (!layout) return audience();
+      const stage = () => load(api.stageThumbUrl(layout.uuid),
+                               api.stageThumbBlobUrl && (() => api.stageThumbBlobUrl(layout.uuid)), audience);
+      stage();
+      setTimeout(() => { if (liveKey === key) stage(); }, STAGE_RELOAD_MS);
+    }, audience);
   }
+  const STAGE_RELOAD_MS = 800;
 
   // Keep the live slide in the middle of the carousel. Runs when the slide changes
   // or the screen rotates; in between, the operator can scroll freely (that never

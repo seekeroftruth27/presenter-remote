@@ -4,7 +4,8 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
 
 - **Remote tab:**
   - Under the song, playlist and arrangement: **LIVE · Slide n of N** and the slide's group.
-  - The slide on screen now, as big as the screen allows.
+  - The slide on screen now, as big as the screen allows, as the **stage screen** shows it
+    (the audience picture if ProPresenter has no stage picture to give).
   - The song's slides in a **carousel** along the bottom, five across, the live one in the
     middle. Scroll it freely (that doesn't change the slide); it re-centres when the live
     slide changes. **Double-tap** a slide to show it (a single tap does nothing).
