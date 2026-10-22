@@ -581,6 +581,7 @@
       if (Date.now() > noteUntil) show(true, "Connected to ProPresenter");
       $("item").textContent = j.item || j.name || "Nothing showing";
       $("pl").textContent = j.playlist ? `Playlist: ${j.playlist}` : "";
+      livePlaylist = j.playlistId && j.itemIndex != null ? { id: j.playlistId, index: j.itemIndex } : null;
       if (j.arrangement !== undefined) $("arrname").textContent = j.uuid ? `Arrangement: ${j.arrangement || MASTER}` : "";
       if (!j.uuid) $("arrname").textContent = "";
       setOnAir(!!j.showing);
@@ -635,11 +636,30 @@
   }
 
   const CLEAR_MACRO = "SPEAKING";   // run first when Clear slide is tapped
+  // NEXT on a song's last slide puts the playlist's next item on screen (skipping
+  // headers and the hidden Announcements section), unless the playlist has none.
+  let livePlaylist = null;   // {id, index} of the live item, from the last poll
+  async function nextItem() {
+    if (!livePlaylist || !liveSlides.length || shownIndex !== liveSlides.length - 1) return false;
+    const nxt = await api.nextPlaylistItem(livePlaylist.id, livePlaylist.index, HIDDEN_SECTION);
+    if (!nxt) { note(true, "That was the last item in the playlist."); return false; }
+    await api.triggerPlaylist(livePlaylist.id, nxt.index, nxt.name);
+    note(true, `Next in the playlist: "${nxt.name}".`);
+    shownKey = "";                                             // read the new song,
+    setTimeout(() => { shownKey = ""; poll(); }, SETTLE_MS);   // and again once settled
+    return true;
+  }
+
   async function act(btn) {
     const name = btn.dataset.act;
     btn.disabled = true;
     const label = btn.textContent.trim();
     try {
+      if (name === "next" && await nextItem()) {
+        if (navigator.vibrate) navigator.vibrate(15);
+        poll();
+        return;
+      }
       let macroErr = null;
       if (name === "clear-slide") {
         try { await api.triggerMacroNamed(CLEAR_MACRO); }

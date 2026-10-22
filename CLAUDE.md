@@ -124,6 +124,10 @@ Learned from real 4xx answers, so trust these over the published docs:
   slide's group in its colour, darkened (8%), its lyrics in bold capitals (62%), a band for the
   next slide's group (8%), the next slide's lyrics (22%) (`showLive`, `fitStage`), from the
   slides it already has.
+- **NEXT past a song's last slide** triggers the playlist's next item with the known-good
+  `/v1/playlist/{id}/{index}/trigger` (`api.nextPlaylistItem` skips headers and the hidden
+  Announcements section; the live item comes from `/v1/playlist/active`). Whether
+  `/v1/trigger/next` would do that by itself wasn't relied on.
 - **Named arrangements' `groups`** are plain group-uuid strings, in play order (confirmed).
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
   from `/v1/macro_collections`.
