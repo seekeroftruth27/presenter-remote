@@ -57,16 +57,20 @@
           font-size:18px; line-height:1.25; color:#ccc; text-align:center; white-space:pre-wrap;
           overflow:hidden; }
   .limg.pic { color:transparent; }
-  /* The big picture as a stage screen draws it: the current slide's lyrics large,
-     the next slide's below, smaller; sizes follow the box (container units). */
-  .limg.stage { container-type:size; flex-direction:column; justify-content:space-evenly;
-                gap:2cqh; padding:3cqh 4cqw; }
-  .limg.stage .cur { color:#fff; font-size:calc(9cqh * var(--fs, 1)); font-weight:600; line-height:1.2; }
-  .limg.stage .nxt { color:#f5c542; font-size:calc(6cqh * var(--fs, 1)); line-height:1.2; }
-  .limg.stage .nxt::before { content:"Next"; display:block; color:#888; font-size:3.5cqh;
-                             font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-                             margin-bottom:.6cqh; }
-  .limg.stage .nxt:empty { display:none; }
+  /* The big picture as the stage screen draws it: the current lyrics large on black,
+     a dark red band naming the next slide's group, and the next lyrics below it.
+     Sizes follow the box (container units); fitStage shrinks long lyrics. */
+  .limg.stage { container-type:size; display:grid; grid-template-rows:70% 8% 22%;
+                padding:0; align-items:stretch; justify-content:stretch; }
+  .limg.stage .cur, .limg.stage .nxt { display:flex; align-items:center; justify-content:center;
+                text-align:center; overflow:hidden; padding:0 4cqw; color:#fff; font-weight:800;
+                text-transform:uppercase; line-height:1.15; white-space:pre-wrap;
+                font-family:"Open Sans", "Segoe UI", system-ui, sans-serif; }
+  .limg.stage .cur { font-size:calc(9cqh * var(--fc, 1)); }
+  .limg.stage .band { background:#5e1824; display:flex; align-items:center; padding:0 2cqw;
+                      color:#a9a9a9; font-size:4.2cqh; letter-spacing:.12em; text-transform:uppercase;
+                      font-weight:600; overflow:hidden; white-space:nowrap; }
+  .limg.stage .nxt { font-size:calc(6.4cqh * var(--fn, 1)); }
   /* The live song's slides: a carousel along the bottom, five across, the live
      one in the middle (follow); scrolling is free and doesn't change the slide. */
   #slides { flex:none; position:relative; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden;
@@ -489,21 +493,28 @@
     const cur = document.createElement("div");
     cur.className = "cur";
     cur.textContent = s ? s.text : "";
+    const band = document.createElement("div");
+    band.className = "band";
+    band.textContent = next ? (next.label || next.group || "") : "";
     const nxt = document.createElement("div");
     nxt.className = "nxt";
-    nxt.textContent = next ? (next.text || next.group || "") : "";
-    img.append(cur, nxt);
+    nxt.textContent = next ? (next.text || "") : "";
+    img.append(cur, band, nxt);
     fitStage();
   }
 
-  // Long lyrics: shrink both texts together (down to 40%) until they fit the box.
+  // Long lyrics: shrink each part (down to 40%) until it fits its row.
   function fitStage() {
     const img = $("liveimg");
-    let fs = 1;
-    img.style.setProperty("--fs", fs);
-    while (fs > 0.4 && img.scrollHeight > img.clientHeight + 1) {
-      fs = Math.round((fs - 0.05) * 100) / 100;
-      img.style.setProperty("--fs", fs);
+    for (const [sel, v] of [[".cur", "--fc"], [".nxt", "--fn"]]) {
+      const el = img.querySelector(sel);
+      if (!el) continue;
+      let f = 1;
+      img.style.setProperty(v, f);
+      while (f > 0.4 && el.scrollHeight > el.clientHeight + 1) {
+        f = Math.round((f - 0.05) * 100) / 100;
+        img.style.setProperty(v, f);
+      }
     }
   }
   window.addEventListener("resize", () => fitStage());
