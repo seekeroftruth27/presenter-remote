@@ -57,6 +57,16 @@
           font-size:18px; line-height:1.25; color:#ccc; text-align:center; white-space:pre-wrap;
           overflow:hidden; }
   .limg.pic { color:transparent; }
+  /* The big picture as a stage screen draws it: the current slide's lyrics large,
+     the next slide's below, smaller; sizes follow the box (container units). */
+  .limg.stage { container-type:size; flex-direction:column; justify-content:space-evenly;
+                gap:2cqh; padding:3cqh 4cqw; }
+  .limg.stage .cur { color:#fff; font-size:calc(9cqh * var(--fs, 1)); font-weight:600; line-height:1.2; }
+  .limg.stage .nxt { color:#f5c542; font-size:calc(6cqh * var(--fs, 1)); line-height:1.2; }
+  .limg.stage .nxt::before { content:"Next"; display:block; color:#888; font-size:3.5cqh;
+                             font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+                             margin-bottom:.6cqh; }
+  .limg.stage .nxt:empty { display:none; }
   /* The live song's slides: a carousel along the bottom, five across, the live
      one in the middle (follow); scrolling is free and doesn't change the slide. */
   #slides { flex:none; position:relative; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden;
@@ -404,6 +414,7 @@
   let liveSlides = [], liveKey = "";
   function buildSlides(uuid, slides) {
     liveSlides = slides;
+    liveKey = "";   // redraw the big picture from the new slides
     const grid = $("slides");
     thumbWatch.disconnect();
     thumbQueue = [];
@@ -469,40 +480,33 @@
     const key = `${thumbUuid}/${index}`;
     if (key === liveKey) return;
     liveKey = key;
-    // Keep showing the previous picture until the new one arrives, rather than
-    // flashing the slide's text in between; fall back to the text if it's slow.
-    const img = $("liveimg");
-    img.textContent = s ? s.text : "";
-    const slow = setTimeout(() => {
-      if (liveKey === key) { img.classList.remove("pic"); img.style.backgroundImage = ""; }
-    }, 700);
-    // The stage screen's picture when ProPresenter gives one (it can lag a moment
-    // behind the slide, so it's fetched again shortly after); else the audience one.
-    const uuid = thumbUuid, thumb = s && s.thumb != null ? s.thumb : index;
-    const show = src => { clearTimeout(slow); if (liveKey === key) { img.style.backgroundImage = `url("${src}")`; img.classList.add("pic"); } };
-    const load = (url, blob, onFail) => {
-      const pic = new Image();
-      pic.onload = () => show(pic.src);
-      pic.onerror = () => {
-        if (blob && !pic.dataset.retried) { pic.dataset.retried = "1"; blob().then(u => { pic.src = u; }, onFail); }
-        else onFail();
-      };
-      pic.src = url;
-    };
-    const audience = () => {
-      if (thumb < 0) { clearTimeout(slow); img.classList.remove("pic"); img.style.backgroundImage = ""; return; }
-      load(api.thumbUrl(uuid, thumb), api.thumbBlobUrl && (() => api.thumbBlobUrl(uuid, thumb)), () => {});
-    };
-    api.stageLayout().then(layout => {
-      if (liveKey !== key) return;
-      if (!layout) return audience();
-      const stage = () => load(api.stageThumbUrl(layout.uuid),
-                               api.stageThumbBlobUrl && (() => api.stageThumbBlobUrl(layout.uuid)), audience);
-      stage();
-      setTimeout(() => { if (liveKey === key) stage(); }, STAGE_RELOAD_MS);
-    }, audience);
+    // Drawn like a stage screen: this slide's lyrics, and the next slide's. (The
+    // API's stage picture is only the layout's template, not the live screen.)
+    const img = $("liveimg"), next = liveSlides[index + 1];
+    img.className = "limg stage";
+    img.style.backgroundImage = "";
+    img.innerHTML = "";
+    const cur = document.createElement("div");
+    cur.className = "cur";
+    cur.textContent = s ? s.text : "";
+    const nxt = document.createElement("div");
+    nxt.className = "nxt";
+    nxt.textContent = next ? (next.text || next.group || "") : "";
+    img.append(cur, nxt);
+    fitStage();
   }
-  const STAGE_RELOAD_MS = 800;
+
+  // Long lyrics: shrink both texts together (down to 40%) until they fit the box.
+  function fitStage() {
+    const img = $("liveimg");
+    let fs = 1;
+    img.style.setProperty("--fs", fs);
+    while (fs > 0.4 && img.scrollHeight > img.clientHeight + 1) {
+      fs = Math.round((fs - 0.05) * 100) / 100;
+      img.style.setProperty("--fs", fs);
+    }
+  }
+  window.addEventListener("resize", () => fitStage());
 
   // Keep the live slide in the middle of the carousel. Runs when the slide changes
   // or the screen rotates; in between, the operator can scroll freely (that never

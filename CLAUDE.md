@@ -117,12 +117,11 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **MASTER has a uuid of its own**, but a song lists it in `arrangements` only while MASTER
   is its current arrangement; otherwise it's hidden (and `song()` adds the current one if it
   isn't listed). MASTER's `groups` is `[]` (= the song's own order).
-- **Stage picture (unconfirmed on real ProPresenter).** The Remote tab's big picture uses
-  `GET /v1/stage/layout/{id}/thumbnail` for the layout on the first stage screen that has one
-  (`/v1/stage/screens` → `/v1/stage/screen/{id}/layout`; `api.stageLayout()`, cached 1 min),
-  fetched on each slide change and again 0.8 s later; any failure falls back to the audience
-  thumbnail. Whether that picture shows the live lyrics (not just the layout's design) is not
-  yet known. The API draws stage pictures per layout only, so the carousel stays audience.
+- **No live stage picture in the API.** `GET /v1/stage/layout/{id}/thumbnail` (layout from
+  `/v1/stage/screens` → `/v1/stage/screen/{id}/layout`) is only the layout's template, not the
+  live stage screen (checked on real ProPresenter, v1.3.13). So the Remote tab's big picture
+  is drawn by the page like a Current/Next stage screen: the live slide's lyrics large, the
+  next slide's below (`showLive`, `fitStage`), from the slides it already has.
 - **Named arrangements' `groups`** are plain group-uuid strings, in play order (confirmed).
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
   from `/v1/macro_collections`.

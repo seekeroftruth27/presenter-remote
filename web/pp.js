@@ -122,7 +122,6 @@
     // A playlist entry must name one of these by uuid (ProPresenter answers 404
     // to anything else).
     const songCache = new Map();
-    let stageCache = null;   // {at, layout}: see stageLayout()
 
     async function song(uuid, fresh) {
       const hit = songCache.get(uuid);
@@ -315,35 +314,6 @@
       // http image itself (fetch goes native, so it isn't blocked).
       async thumbBlobUrl(uuid, index) {
         const r = await call("GET", `/v1/presentation/${enc(uuid)}/thumbnail/${index}?quality=320&thumbnail_type=jpeg`);
-        return URL.createObjectURL(await r.blob());
-      },
-
-      // Stage: the layout shown on the first stage screen that has one (cached for a
-      // minute), and that layout's picture, for the Remote tab's big picture. The
-      // API draws stage pictures per layout only (not per slide); null = no stage.
-      async stageLayout() {
-        if (stageCache && Date.now() - stageCache.at < 60000) return stageCache.layout;
-        let layout = null;
-        try {
-          let screens = await getJSON("/v1/stage/screens");
-          if (screens && !Array.isArray(screens)) screens = screens.screens || screens.items || [];
-          for (const sc of screens || []) {
-            const id = ident(sc).uuid;
-            if (!id) continue;
-            let l = await getJSON(`/v1/stage/screen/${enc(id)}/layout`);
-            if (l && l.layout) l = l.layout;
-            const lid = ident(l).uuid;
-            if (lid) { layout = { uuid: lid, name: ident(l).name }; break; }
-          }
-        } catch { layout = null; }
-        stageCache = { at: Date.now(), layout };
-        return layout;
-      },
-      stageThumbUrl(layout) {
-        return `${base}/v1/stage/layout/${enc(layout)}/thumbnail?t=${Date.now()}`;
-      },
-      async stageThumbBlobUrl(layout) {
-        const r = await call("GET", `/v1/stage/layout/${enc(layout)}/thumbnail?t=${Date.now()}`);
         return URL.createObjectURL(await r.blob());
       },
 
