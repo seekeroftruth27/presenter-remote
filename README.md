@@ -3,14 +3,17 @@
 A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network API.
 
 - **Remote tab:**
-  - Under the song, playlist and arrangement: **LIVE · Slide n of N** and the slide's group.
+  - Under the song, playlist and arrangement: **Slide n of N**.
   - The slide on screen now, as big as the screen allows, drawn like the **stage screen**:
-    its lyrics large, then a band in the next slide's group colour, naming it, and the next lyrics.
+    a banner with its group in the group's colour, its lyrics large, then a banner for the
+    next slide's group, and the next lyrics.
   - The song's slides in a **carousel** along the bottom, five across, the live one in the
     middle. Scroll it freely (that doesn't change the slide); it re-centres when the live
     slide changes. **Double-tap** a slide to show it (a single tap does nothing).
   - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** at the top; they
     only show while a slide is on screen.
+    NEXT on a song's last slide moves on to the next item in the playlist; PREV on its
+    first slide goes back to the previous item (from its start).
     Clear slide runs the **SPEAKING** macro first, then clears.
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.

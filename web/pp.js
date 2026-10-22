@@ -216,6 +216,9 @@
           from = ((await getJSON("/v1/playlist/active")) || {}).presentation || null;
           out.playlist = ((from || {}).playlist || {}).name || "";
           out.item = ((from || {}).item || {}).name || "";
+          out.playlistId = ((from || {}).playlist || {}).uuid || "";   // for NEXT past the last slide
+          const ii = ((from || {}).item || {}).index;
+          out.itemIndex = Number.isInteger(ii) ? ii : null;
         } catch { /* not from a playlist -- fine */ }
         // After switching to another song from a playlist, ProPresenter has no
         // slide index until the slide changes (seen on real ProPresenter). The song
@@ -340,6 +343,23 @@
 
       // Put a playlist on screen: its first item, or (index given) that item,
       // only if the playlist still has `expectedName` there.
+      // The playlist item after (step 1) or before (step -1) `fromIndex` that the
+      // stage team would show: not a header, and not in a section whose header
+      // matches `skipSection` (e.g. Announcements). {index, name}, or null at the
+      // end (or start) of the playlist.
+      async adjacentPlaylistItem(id, fromIndex, step, skipSection) {
+        const items = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
+        let hide = false;
+        const shown = items.map((it, k) => {
+          const name = (it.id || {}).name || "";
+          if (it.type === "header") { hide = !!(skipSection && skipSection.test(name)); return null; }
+          return hide ? null : { index: k, name };
+        });
+        for (let k = fromIndex + step; k >= 0 && k < items.length; k += step)
+          if (shown[k]) return shown[k];
+        return null;
+      },
+
       async triggerPlaylist(id, index, expectedName) {
         const path = `/v1/playlist/${enc(id)}`;
         if (index === undefined || index === null) {
