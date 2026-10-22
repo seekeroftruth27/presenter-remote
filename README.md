@@ -9,7 +9,8 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
   - The song's slides in a **carousel** along the bottom, five across, the live one in the
     middle. Scroll it freely (that doesn't change the slide); it re-centres when the live
     slide changes. **Double-tap** a slide to show it (a single tap does nothing).
-  - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** at the top.
+  - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** at the top; they
+    only show while a slide is on screen.
     Clear slide runs the **SPEAKING** macro first, then clears.
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.

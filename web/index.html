@@ -113,6 +113,8 @@
   #previous { background:#333; }
   #next { background:#2563eb; }
   /* Clear slide sits in the top bar, small and quiet: it's needed, but rarely. */
+  /* PREV / NEXT and Clear slide show only while a slide is on screen (setOnAir). */
+  .pad[hidden], #clear-slide[hidden] { display:none; }
   #clear-slide { flex:none; min-height:48px; padding:0 14px; background:#2a2a2a; color:#bbb;
                  font-size:15px; font-weight:600; border-radius:12px; }
   @media (max-width:600px) {   /* phone: title on its own line, Clear slide below */
@@ -264,13 +266,13 @@
         <div class="pl" id="arrname"></div>
         <div class="lhdr" id="livehdr" hidden>LIVE · <span id="livepos"></span></div>
         <div id="livegrp" class="lgrp"></div></div>
-      <button id="clear-slide" data-act="clear-slide">Clear slide</button>
+      <button id="clear-slide" data-act="clear-slide" hidden>Clear slide</button>
     </div>
     <div id="live" class="live" hidden>
       <div id="liveimg" class="limg"></div>
     </div>
     <div id="slides"><div class="empty">Nothing showing</div></div>
-    <div class="pad">
+    <div class="pad" id="pad" hidden>
       <button id="previous" data-act="previous">◀ PREV</button>
       <button id="next" data-act="next">NEXT ▶</button>
     </div>
@@ -629,6 +631,8 @@
     const t = $("tab-remote");
     t.classList.toggle("onair", on);
     t.textContent = on ? "LIVE" : "Remote";
+    $("pad").hidden = !on;           // nothing on screen: no PREV / NEXT
+    $("clear-slide").hidden = !on;   // and nothing to clear
   }
 
   const CLEAR_MACRO = "SPEAKING";   // run first when Clear slide is tapped

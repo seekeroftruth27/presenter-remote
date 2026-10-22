@@ -5,6 +5,10 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- Remote tab: PREV / NEXT and Clear slide only show while a slide is on screen
+  (the tab reads LIVE); after Clear slide they go away until a slide is shown again.
+
 ## [v1.3.14] — 2026-10-22
 
 ### Changed
