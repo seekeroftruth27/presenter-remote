@@ -12,7 +12,8 @@ A phone and iPad remote for **ProPresenter 7** (7.9 or later), using its network
     slide changes. **Double-tap** a slide to show it (a single tap does nothing).
   - Big **PREV / NEXT** buttons at the bottom, and a small **Clear slide** at the top; they
     only show while a slide is on screen.
-    NEXT on a song's last slide moves on to the next item in the playlist.
+    NEXT on a song's last slide moves on to the next item in the playlist; PREV on its
+    first slide goes back to the previous item (from its start).
     Clear slide runs the **SPEAKING** macro first, then clears.
   - The **Remote** tab is green while nothing is on screen, and fades slowly in and
     out of red while a slide is showing (seen from any tab), reading **LIVE**.

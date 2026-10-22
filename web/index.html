@@ -636,15 +636,20 @@
   }
 
   const CLEAR_MACRO = "SPEAKING";   // run first when Clear slide is tapped
-  // NEXT on a song's last slide puts the playlist's next item on screen (skipping
-  // headers and the hidden Announcements section), unless the playlist has none.
+  // NEXT on a song's last slide puts the playlist's next item on screen, and PREV on
+  // its first slide the previous item (from its start), skipping headers and the
+  // hidden Announcements section; at either end of the playlist they say so.
   let livePlaylist = null;   // {id, index} of the live item, from the last poll
-  async function nextItem() {
-    if (!livePlaylist || !liveSlides.length || shownIndex !== liveSlides.length - 1) return false;
-    const nxt = await api.nextPlaylistItem(livePlaylist.id, livePlaylist.index, HIDDEN_SECTION);
-    if (!nxt) { note(true, "That was the last item in the playlist."); return false; }
-    await api.triggerPlaylist(livePlaylist.id, nxt.index, nxt.name);
-    note(true, `Next in the playlist: "${nxt.name}".`);
+  async function adjacentItem(step) {
+    const edge = step > 0 ? liveSlides.length - 1 : 0;
+    if (!livePlaylist || !liveSlides.length || shownIndex !== edge) return false;
+    const it = await api.adjacentPlaylistItem(livePlaylist.id, livePlaylist.index, step, HIDDEN_SECTION);
+    if (!it) {
+      note(true, step > 0 ? "That was the last item in the playlist." : "This is the first item in the playlist.");
+      return false;
+    }
+    await api.triggerPlaylist(livePlaylist.id, it.index, it.name);
+    note(true, `${step > 0 ? "Next" : "Previous"} in the playlist: "${it.name}".`);
     shownKey = "";                                             // read the new song,
     setTimeout(() => { shownKey = ""; poll(); }, SETTLE_MS);   // and again once settled
     return true;
@@ -655,7 +660,7 @@
     btn.disabled = true;
     const label = btn.textContent.trim();
     try {
-      if (name === "next" && await nextItem()) {
+      if ((name === "next" || name === "previous") && await adjacentItem(name === "next" ? 1 : -1)) {
         if (navigator.vibrate) navigator.vibrate(15);
         poll();
         return;

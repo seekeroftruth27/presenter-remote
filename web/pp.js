@@ -343,17 +343,20 @@
 
       // Put a playlist on screen: its first item, or (index given) that item,
       // only if the playlist still has `expectedName` there.
-      // The playlist item after `fromIndex` that the stage team would show: not a
-      // header, and not in a section whose header matches `skipSection`
-      // (e.g. Announcements). {index, name}, or null at the end of the playlist.
-      async nextPlaylistItem(id, fromIndex, skipSection) {
+      // The playlist item after (step 1) or before (step -1) `fromIndex` that the
+      // stage team would show: not a header, and not in a section whose header
+      // matches `skipSection` (e.g. Announcements). {index, name}, or null at the
+      // end (or start) of the playlist.
+      async adjacentPlaylistItem(id, fromIndex, step, skipSection) {
         const items = ((await getJSON(`/v1/playlist/${enc(id)}`)) || {}).items || [];
         let hide = false;
-        for (let k = 0; k < items.length; k++) {
-          const it = items[k], name = (it.id || {}).name || "";
-          if (it.type === "header") { hide = !!(skipSection && skipSection.test(name)); continue; }
-          if (k > fromIndex && !hide) return { index: k, name };
-        }
+        const shown = items.map((it, k) => {
+          const name = (it.id || {}).name || "";
+          if (it.type === "header") { hide = !!(skipSection && skipSection.test(name)); return null; }
+          return hide ? null : { index: k, name };
+        });
+        for (let k = fromIndex + step; k >= 0 && k < items.length; k += step)
+          if (shown[k]) return shown[k];
         return null;
       },
 
