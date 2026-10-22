@@ -5,6 +5,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Changed
+- Remote tab: the big picture now has the live slide's group banner at the top,
+  in its colour, like the stage screen. The header just says "Slide n of N", and
+  the group title above the picture is gone (the banner shows it).
+
 ## [v1.3.15] — 2026-10-22
 
 ### Changed
