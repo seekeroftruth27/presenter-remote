@@ -121,7 +121,7 @@ Learned from real 4xx answers, so trust these over the published docs:
   `/v1/stage/screens` → `/v1/stage/screen/{id}/layout`) is only the layout's template, not the
   live stage screen (checked on real ProPresenter, v1.3.13). So the Remote tab's big picture
   is drawn by the page like the church's Current/Next stage screen: the live slide's lyrics
-  in bold capitals (top 70%), a dark red band with the next slide's group (8%), the next
+  in bold capitals (top 70%), a band in the next slide's group colour, darkened, naming it (8%), the next
   slide's lyrics (22%) (`showLive`, `fitStage`), from the slides it already has.
 - **Named arrangements' `groups`** are plain group-uuid strings, in play order (confirmed).
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")

@@ -58,7 +58,8 @@
           overflow:hidden; }
   .limg.pic { color:transparent; }
   /* The big picture as the stage screen draws it: the current lyrics large on black,
-     a dark red band naming the next slide's group, and the next lyrics below it.
+     a band in the next slide's group colour (darkened) naming that group, and the
+     next lyrics below it.
      Sizes follow the box (container units); fitStage shrinks long lyrics. */
   .limg.stage { container-type:size; display:grid; grid-template-rows:70% 8% 22%;
                 padding:0; align-items:stretch; justify-content:stretch; }
@@ -67,7 +68,8 @@
                 text-transform:uppercase; line-height:1.15; white-space:pre-wrap;
                 font-family:"Open Sans", "Segoe UI", system-ui, sans-serif; }
   .limg.stage .cur { font-size:calc(9cqh * var(--fc, 1)); }
-  .limg.stage .band { background:#5e1824; display:flex; align-items:center; padding:0 2cqw;
+  .limg.stage .band { background:#5e1824;   /* no colour known */
+                      background:color-mix(in srgb, var(--nc, #c0264a) 50%, #000); display:flex; align-items:center; padding:0 2cqw;
                       color:#a9a9a9; font-size:4.2cqh; letter-spacing:.12em; text-transform:uppercase;
                       font-weight:600; overflow:hidden; white-space:nowrap; }
   .limg.stage .nxt { font-size:calc(6.4cqh * var(--fn, 1)); }
@@ -496,6 +498,7 @@
     const band = document.createElement("div");
     band.className = "band";
     band.textContent = next ? (next.label || next.group || "") : "";
+    if (next && next.color) band.style.setProperty("--nc", next.color);   // the next group's colour
     const nxt = document.createElement("div");
     nxt.className = "nxt";
     nxt.textContent = next ? (next.text || "") : "";
