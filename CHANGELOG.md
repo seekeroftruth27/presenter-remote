@@ -5,6 +5,8 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.16] — 2026-10-22
+
 ### Changed
 - Remote tab: the big picture now has the live slide's group banner at the top,
   in its colour, like the stage screen. The header just says "Slide n of N", and
@@ -12,10 +14,4 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 - NEXT on a song's last slide puts the next item in the playlist on screen, and
   PREV on a song's first slide the previous item (from its start), skipping headers
   and the Announcements section. At either end of the playlist they say so instead.
-
-## [v1.3.15] — 2026-10-22
-
-### Changed
-- Remote tab: PREV / NEXT and Clear slide only show while a slide is on screen
-  (the tab reads LIVE); after Clear slide they go away until a slide is shown again.
 
