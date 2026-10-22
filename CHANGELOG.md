@@ -5,6 +5,11 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- PREV on the first slide of the playlist's first song (or NEXT on the last
+  slide of its last) could still step into the hidden Announcements section. At
+  either end of the playlist they now only say so and change nothing.
+
 ## [v1.3.16] — 2026-10-22
 
 ### Changed
