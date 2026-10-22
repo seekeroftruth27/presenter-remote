@@ -57,6 +57,22 @@
           font-size:18px; line-height:1.25; color:#ccc; text-align:center; white-space:pre-wrap;
           overflow:hidden; }
   .limg.pic { color:transparent; }
+  /* The big picture as the stage screen draws it: the current lyrics large on black,
+     a band in the next slide's group colour (darkened) naming that group, and the
+     next lyrics below it.
+     Sizes follow the box (container units); fitStage shrinks long lyrics. */
+  .limg.stage { container-type:size; display:grid; grid-template-rows:70% 8% 22%;
+                padding:0; align-items:stretch; justify-content:stretch; }
+  .limg.stage .cur, .limg.stage .nxt { display:flex; align-items:center; justify-content:center;
+                text-align:center; overflow:hidden; padding:0 4cqw; color:#fff; font-weight:800;
+                text-transform:uppercase; line-height:1.15; white-space:pre-wrap;
+                font-family:"Open Sans", "Segoe UI", system-ui, sans-serif; }
+  .limg.stage .cur { font-size:calc(9cqh * var(--fc, 1)); }
+  .limg.stage .band { background:#5e1824;   /* no colour known */
+                      background:color-mix(in srgb, var(--nc, #c0264a) 50%, #000); display:flex; align-items:center; padding:0 2cqw;
+                      color:#a9a9a9; font-size:4.2cqh; letter-spacing:.12em; text-transform:uppercase;
+                      font-weight:600; overflow:hidden; white-space:nowrap; }
+  .limg.stage .nxt { font-size:calc(6.4cqh * var(--fn, 1)); }
   /* The live song's slides: a carousel along the bottom, five across, the live
      one in the middle (follow); scrolling is free and doesn't change the slide. */
   #slides { flex:none; position:relative; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden;
@@ -404,6 +420,7 @@
   let liveSlides = [], liveKey = "";
   function buildSlides(uuid, slides) {
     liveSlides = slides;
+    liveKey = "";   // redraw the big picture from the new slides
     const grid = $("slides");
     thumbWatch.disconnect();
     thumbQueue = [];
@@ -469,40 +486,41 @@
     const key = `${thumbUuid}/${index}`;
     if (key === liveKey) return;
     liveKey = key;
-    // Keep showing the previous picture until the new one arrives, rather than
-    // flashing the slide's text in between; fall back to the text if it's slow.
-    const img = $("liveimg");
-    img.textContent = s ? s.text : "";
-    const slow = setTimeout(() => {
-      if (liveKey === key) { img.classList.remove("pic"); img.style.backgroundImage = ""; }
-    }, 700);
-    // The stage screen's picture when ProPresenter gives one (it can lag a moment
-    // behind the slide, so it's fetched again shortly after); else the audience one.
-    const uuid = thumbUuid, thumb = s && s.thumb != null ? s.thumb : index;
-    const show = src => { clearTimeout(slow); if (liveKey === key) { img.style.backgroundImage = `url("${src}")`; img.classList.add("pic"); } };
-    const load = (url, blob, onFail) => {
-      const pic = new Image();
-      pic.onload = () => show(pic.src);
-      pic.onerror = () => {
-        if (blob && !pic.dataset.retried) { pic.dataset.retried = "1"; blob().then(u => { pic.src = u; }, onFail); }
-        else onFail();
-      };
-      pic.src = url;
-    };
-    const audience = () => {
-      if (thumb < 0) { clearTimeout(slow); img.classList.remove("pic"); img.style.backgroundImage = ""; return; }
-      load(api.thumbUrl(uuid, thumb), api.thumbBlobUrl && (() => api.thumbBlobUrl(uuid, thumb)), () => {});
-    };
-    api.stageLayout().then(layout => {
-      if (liveKey !== key) return;
-      if (!layout) return audience();
-      const stage = () => load(api.stageThumbUrl(layout.uuid),
-                               api.stageThumbBlobUrl && (() => api.stageThumbBlobUrl(layout.uuid)), audience);
-      stage();
-      setTimeout(() => { if (liveKey === key) stage(); }, STAGE_RELOAD_MS);
-    }, audience);
+    // Drawn like a stage screen: this slide's lyrics, and the next slide's. (The
+    // API's stage picture is only the layout's template, not the live screen.)
+    const img = $("liveimg"), next = liveSlides[index + 1];
+    img.className = "limg stage";
+    img.style.backgroundImage = "";
+    img.innerHTML = "";
+    const cur = document.createElement("div");
+    cur.className = "cur";
+    cur.textContent = s ? s.text : "";
+    const band = document.createElement("div");
+    band.className = "band";
+    band.textContent = next ? (next.label || next.group || "") : "";
+    if (next && next.color) band.style.setProperty("--nc", next.color);   // the next group's colour
+    const nxt = document.createElement("div");
+    nxt.className = "nxt";
+    nxt.textContent = next ? (next.text || "") : "";
+    img.append(cur, band, nxt);
+    fitStage();
   }
-  const STAGE_RELOAD_MS = 800;
+
+  // Long lyrics: shrink each part (down to 40%) until it fits its row.
+  function fitStage() {
+    const img = $("liveimg");
+    for (const [sel, v] of [[".cur", "--fc"], [".nxt", "--fn"]]) {
+      const el = img.querySelector(sel);
+      if (!el) continue;
+      let f = 1;
+      img.style.setProperty(v, f);
+      while (f > 0.4 && el.scrollHeight > el.clientHeight + 1) {
+        f = Math.round((f - 0.05) * 100) / 100;
+        img.style.setProperty(v, f);
+      }
+    }
+  }
+  window.addEventListener("resize", () => fitStage());
 
   // Keep the live slide in the middle of the carousel. Runs when the slide changes
   // or the screen rotates; in between, the operator can scroll freely (that never
