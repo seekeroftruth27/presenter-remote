@@ -5,15 +5,9 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+## [v1.3.15] — 2026-10-22
+
 ### Changed
 - Remote tab: PREV / NEXT and Clear slide only show while a slide is on screen
   (the tab reads LIVE); after Clear slide they go away until a slide is shown again.
-
-## [v1.3.14] — 2026-10-22
-
-### Changed
-- The big picture on the Remote tab now looks like the stage screen: the live
-  slide's lyrics in large bold capitals on black, a band in the next slide's group
-  colour naming that group, and the next slide's lyrics below it. (ProPresenter only gives a
-  picture of the stage layout's template, not of the live stage screen.)
 
