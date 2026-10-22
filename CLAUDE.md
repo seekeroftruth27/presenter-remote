@@ -127,8 +127,10 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **NEXT past a song's last slide / PREV before its first** triggers the playlist's next /
   previous item with the known-good `/v1/playlist/{id}/{index}/trigger`
   (`api.adjacentPlaylistItem` skips headers and the hidden Announcements section; the live
-  item comes from `/v1/playlist/active`). It starts at the item's first slide. Whether
-  `/v1/trigger/next` would move on by itself wasn't relied on.
+  item comes from `/v1/playlist/active`). It starts at the item's first slide. At either end
+  of the playlist nothing is sent: ProPresenter's own `/v1/trigger/previous` / `next` steps
+  into neighbouring items, the hidden Announcements section included (seen on real
+  ProPresenter: PREV on the first song showed "Announcements").
 - **Named arrangements' `groups`** are plain group-uuid strings, in play order (confirmed).
 - **Macros tab.** Shows the macro collection named "Default Collection" (or plain "Default")
   from `/v1/macro_collections`.
