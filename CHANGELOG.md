@@ -5,6 +5,12 @@ All notable changes to PP Remote. Add new entries under **Unreleased**; the
 
 ## [Unreleased]
 
+### Fixed
+- The Remote tab could be one slide behind the stage screen (for example on a
+  chorus with two identical slides), showing the wrong "next" lyrics. It now goes
+  by the current and next text ProPresenter reports for the screen itself: the big
+  picture shows exactly that, and the slide number and highlight follow it.
+
 ## [v1.3.17] — 2026-10-22
 
 ### Fixed

@@ -124,6 +124,13 @@ Learned from real 4xx answers, so trust these over the published docs:
   slide's group in its colour, darkened (8%), its lyrics in bold capitals (62%), a band for the
   next slide's group (8%), the next slide's lyrics (22%) (`showLive`, `fitStage`), from the
   slides it already has.
+- **What's on screen comes from `/v1/status/slide`** (`current.text`, `next.text`: what the
+  stage screen's Current/Next shows). `slide_index` alone was seen one slide behind the stage
+  screen on real ProPresenter (a Default arrangement with two identical Chorus slides; the
+  remote showed the second Chorus as next where the stage showed Verse 2). The page draws the
+  big picture from that text and highlights the slide whose words match it, and whose
+  follower's match the next text, nearest the reported index (`matchIndex`). Without it
+  (older ProPresenter), the slide number is used as before.
 - **NEXT past a song's last slide / PREV before its first** triggers the playlist's next /
   previous item with the known-good `/v1/playlist/{id}/{index}/trigger`
   (`api.adjacentPlaylistItem` skips headers and the hidden Announcements section; the live

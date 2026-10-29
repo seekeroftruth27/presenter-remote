@@ -480,12 +480,14 @@
     $("livepos").textContent = liveSlides.length && index < liveSlides.length
       ? `Slide ${index + 1} of ${liveSlides.length}` : `Slide ${index + 1}`;
     panel.style.setProperty("--gc", (s && s.color) || "#f59e0b");
-    const key = `${thumbUuid}/${index}`;
+    const curText = onScreen ? onScreen.cur : (s ? s.text : "");
+    const key = `${thumbUuid}/${index}/${onScreen ? onScreen.cur + "\u0000" + onScreen.next : ""}`;
     if (key === liveKey) return;
     liveKey = key;
     // Drawn like a stage screen: this slide's lyrics, and the next slide's. (The
     // API's stage picture is only the layout's template, not the live screen.)
     const img = $("liveimg"), next = liveSlides[index + 1];
+    const nextText = onScreen ? onScreen.next : (next ? next.text || "" : "");
     img.className = "limg stage";
     img.style.backgroundImage = "";
     img.innerHTML = "";
@@ -495,14 +497,14 @@
     if (s && s.color) top.style.setProperty("--nc", s.color);   // the live group's colour
     const cur = document.createElement("div");
     cur.className = "cur";
-    cur.textContent = s ? s.text : "";
+    cur.textContent = curText;
     const band = document.createElement("div");
     band.className = "band";
     band.textContent = next ? (next.label || next.group || "") : "";
     if (next && next.color) band.style.setProperty("--nc", next.color);   // the next group's colour
     const nxt = document.createElement("div");
     nxt.className = "nxt";
-    nxt.textContent = next ? (next.text || "") : "";
+    nxt.textContent = nextText;
     img.append(top, cur, band, nxt);
     fitStage();
   }
@@ -621,9 +623,32 @@
   // Move the highlight to ProPresenter's slide, except the slide just left by a
   // jump while that answer may still be stale.
   function followIndex(j) {
-    if (jumped && (Date.now() > jumped.until || j.uuid !== jumped.uuid || j.index === jumped.to)) jumped = null;
-    if (jumped && j.index === jumped.from) return;   // ProPresenter's answer from before the jump
-    highlight(j.index);
+    onScreen = j.onScreen || null;
+    const index = matchIndex(j);
+    if (jumped && (Date.now() > jumped.until || j.uuid !== jumped.uuid || index === jumped.to)) jumped = null;
+    if (jumped && index === jumped.from) return;   // ProPresenter's answer from before the jump
+    highlight(index);
+    if (index === shownIndex) showLive(index);     // same slide, but the text on screen may differ
+  }
+
+  // Which of the song's slides is on screen: the one whose words are the current
+  // slide's (and whose follower's are the next's), nearest the reported number.
+  // The number alone didn't always match the played order (seen on real
+  // ProPresenter: the remote one slide behind the stage screen).
+  let onScreen = null;   // {cur, next}: ProPresenter's own current / next slide text
+  const norm = t => String(t || "").replace(/\s+/g, " ").trim().toLowerCase();
+  function matchIndex(j) {
+    const os = j.onScreen;
+    if (!os || !liveSlides.length) return j.index;
+    const cur = norm(os.cur), next = norm(os.next), near = j.index ?? shownIndex ?? 0;
+    let best = null, bestScore = -1;
+    liveSlides.forEach((s, i) => {
+      if (norm(s.text) !== cur) return;
+      const follows = norm((liveSlides[i + 1] || {}).text) === next;
+      const score = (follows ? 1000 : 0) - Math.abs(i - near);
+      if (score > bestScore) { best = i; bestScore = score; }
+    });
+    return best ?? j.index;
   }
 
   // The Remote tab says LIVE and fades red while a slide is on screen.
