@@ -211,6 +211,13 @@
           const layers = await getJSON("/v1/status/layers");
           if (layers && typeof layers.slide === "boolean") { out.showing = layers.slide; layered = true; }
         } catch { /* older ProPresenter: fall back to "a presentation is live" */ }
+        // What the screen shows right now, as ProPresenter itself reports it (the
+        // stage screen's Current / Next): the page goes by this text, not by the
+        // slide number alone, which didn't always match the played order.
+        try {
+          const st = (await getJSON("/v1/status/slide")) || {};
+          if (st.current) out.onScreen = { cur: (st.current || {}).text || "", next: (st.next || {}).text || "" };
+        } catch { /* older ProPresenter: the slide number only */ }
         let from = null;
         try {
           from = ((await getJSON("/v1/playlist/active")) || {}).presentation || null;
