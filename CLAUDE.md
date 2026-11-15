@@ -127,10 +127,12 @@ Learned from real 4xx answers, so trust these over the published docs:
 - **What's on screen comes from `/v1/status/slide`** (`current.text`, `next.text`: what the
   stage screen's Current/Next shows). `slide_index` alone was seen one slide behind the stage
   screen on real ProPresenter (a Default arrangement with two identical Chorus slides; the
-  remote showed the second Chorus as next where the stage showed Verse 2). The page draws the
-  big picture from that text and highlights the slide whose words match it, and whose
-  follower's match the next text, nearest the reported index (`matchIndex`). Without it
-  (older ProPresenter), the slide number is used as before.
+  remote showed the second Chorus as next where the stage showed Verse 2). The page highlights
+  the slide whose words match `current.text`, and whose follower's match `next.text`, nearest
+  the reported index (`matchIndex`), and draws the current text from it. The NEXT lyrics
+  are the following slide of the same presentation, not `next.text`: ProPresenter's next can
+  be another item (on a Bible passage it gave the following "Timp de rugăciune" slide).
+  Without the endpoint (older ProPresenter), the slide number is used as before.
 - **NEXT past a song's last slide / PREV before its first** triggers the playlist's next /
   previous item with the known-good `/v1/playlist/{id}/{index}/trigger`
   (`api.adjacentPlaylistItem` skips headers and the hidden Announcements section; the live

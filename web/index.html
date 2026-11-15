@@ -481,13 +481,16 @@
       ? `Slide ${index + 1} of ${liveSlides.length}` : `Slide ${index + 1}`;
     panel.style.setProperty("--gc", (s && s.color) || "#f59e0b");
     const curText = onScreen ? onScreen.cur : (s ? s.text : "");
-    const key = `${thumbUuid}/${index}/${onScreen ? onScreen.cur + "\u0000" + onScreen.next : ""}`;
+    const key = `${thumbUuid}/${index}/${onScreen ? onScreen.cur : ""}`;
     if (key === liveKey) return;
     liveKey = key;
     // Drawn like a stage screen: this slide's lyrics, and the next slide's. (The
     // API's stage picture is only the layout's template, not the live screen.)
     const img = $("liveimg"), next = liveSlides[index + 1];
-    const nextText = onScreen ? onScreen.next : (next ? next.text || "" : "");
+    // The next slide of THIS presentation: ProPresenter's own "next" can be another
+    // item altogether (a Bible passage showed the following prayer slide), so it's
+    // only used to tell which slide is on screen (matchIndex), not drawn.
+    const nextText = next ? next.text || "" : "";
     img.className = "limg stage";
     img.style.backgroundImage = "";
     img.innerHTML = "";
